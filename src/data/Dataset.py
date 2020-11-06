@@ -1,25 +1,27 @@
+from io import BytesIO
+from urllib.request import urlopen, urlretrieve
+from scipy.io.arff import loadarff
+from skmultilearn.dataset import load_dataset, load_from_arff
 import numpy as np
 import os
 import pandas as pd
 import pathlib
 import sys
-from skmultilearn.dataset import load_dataset, load_from_arff
+from zipfile import ZipFile
 
 
 class Dataset:
     """
     Downloads and provides a dataset from a set of available datasets.
-    Available datasets: 'bibtex', 'corel5k', 'emotions', 'enron', 'mediamill', 'medical', 'scene', 'yeast'.
+    Available datasets: 'bibtex', 'corel5k', 'emotions', 'enron', 'flags', 'image', 'mediamill', 'medical', 'scene', 'yeast'.
     """
-    data_path = os.path.dirname(__file__) + '/../../data'
+    data_path = os.path.dirname(__file__) + '/../../data/'
     skmultilearn_datasets = {'bibtex', 'corel5k', 'emotions',
                              'enron', 'mediamill', 'medical', 'scene', 'yeast'}
-    other_datasets = {'flags': 'http://www.uco.es/grupos/kdis/MLLResources/ucobigfiles/Datasets/Original/Flags.zip',
-                      'image': '',
-                      'reuters': '',
-                      'slashdot': 'http://www.uco.es/grupos/kdis/MLLResources/ucobigfiles/Datasets/Original/Slashdot.zip'}
-    dataset_types = {'bibtex': 'Text', 'corel5k': 'Image', 'emotions': 'Music', 'enron': 'Text', 'flags': 'Image',
-                     'mediamill': 'Video', 'medical': 'Text', 'reuters': 'Text', 'scene': 'Image', 'slashdot': 'Text', 'yeast': 'Biology'}
+    other_datasets = {'flags': (7, 'http://www.uco.es/grupos/kdis/MLLResources/ucobigfiles/Datasets/Original/Flags.zip'),
+                      'image': (5, 'https://www.openml.org/data/download/21241890/file203856ce269f.arff')}
+    dataset_types = {'bibtex': 'Text', 'corel5k': 'Image', 'emotions': 'Music', 'enron': 'Text', 'flags': 'Image', 'image': 'Image',
+                     'mediamill': 'Video', 'medical': 'Text', 'scene': 'Image', 'yeast': 'Biology'}
 
     def __init__(self, name):
         """
@@ -73,9 +75,9 @@ class Dataset:
 
         # Store data
         self.X_train = self.X_train.toarray()
-        self.Y_train = self.Y_train.toarray()
+        self.Y_train = np.array(self.Y_train.toarray(), dtype=bool)
         self.X_test = self.X_test.toarray()
-        self.Y_test = self.Y_test.toarray()
+        self.Y_test = np.array(self.Y_test.toarray(), dtype=bool)
 
         # mediamill should be reduced to 5000 instances total.
         # Using 4500 train and 500 test
@@ -93,4 +95,49 @@ class Dataset:
             self.Y_test = self.Y_test[test_idx]
 
     def __load_other_dataset(self, name):
-        pass
+        label_count, url = Dataset.other_datasets[name]
+
+        if name == 'flags':
+            filenames = [name + '-' + t + '.arff' for t in ['train', 'test']]
+            paths = [Dataset.data_path + f for f in filenames]
+
+            # Download if not already
+            if not os.path.isfile(paths[0]) or not os.path.isfile(paths[1]):
+                response = urlopen(url)
+                zf = ZipFile(BytesIO(response.read()))
+                for f in filenames:
+                    zf.extract(member=f, path=Dataset.data_path)
+                zf.close()
+
+            ds_train = np.array(pd.DataFrame(
+                loadarff(paths[0])[0]), dtype=float)
+            ds_test = np.array(pd.DataFrame(
+                loadarff(paths[1])[0]), dtype=float)
+
+            self.X_train = ds_train[:, :-label_count]
+            self.Y_train = np.array(ds_train[:, -label_count:], dtype=bool)
+            self.X_test = ds_test[:, :-label_count]
+            self.Y_test = np.array(ds_test[:, -label_count:], dtype=bool)
+        elif name == 'image':
+            path = Dataset.data_path + 'image.arff'
+
+            # Download if not already
+            if not os.path.isfile(path):
+                urlretrieve(url, path)
+
+            ds = np.array(pd.DataFrame(loadarff(path)[0]))
+
+            # Separate train, test in 1800, 200
+            shuffled = np.arange(ds.shape[0])
+            np.random.shuffle(shuffled)
+            train_idx = shuffled[:1800]
+            test_idx = shuffled[1800:]
+
+            self.X_train = np.array(ds[train_idx, :-label_count], dtype=float)
+            self.Y_train = np.array(ds[train_idx, -label_count:], dtype=bool)
+            self.X_test = np.array(ds[test_idx, :-label_count], dtype=float)
+            self.Y_test = np.array(ds[test_idx, -label_count:], dtype=bool)
+
+
+ds = Dataset('image')
+ds.info()
