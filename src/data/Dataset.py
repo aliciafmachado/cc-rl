@@ -1,7 +1,7 @@
 from io import BytesIO
 from urllib.request import urlopen, urlretrieve
 from scipy.io.arff import loadarff
-from skmultilearn.dataset import load_dataset, load_from_arff
+from skmultilearn.dataset import load_dataset, load_from_arff, available_data_sets
 import numpy as np
 import os
 import pandas as pd
@@ -13,27 +13,49 @@ from zipfile import ZipFile
 class Dataset:
     """
     Downloads and provides a dataset from a set of available datasets.
-    Available datasets: 'bibtex', 'corel5k', 'emotions', 'enron', 'flags', 'image', 'mediamill', 'medical', 'scene', 'yeast'.
+    Available datasets: 'bibtex', 'birds', 'corel5k', 'delicious', 'emotions', 'enron', 'genbase', 'mediamill', 'medical',
+                        'rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4', 'rcv1subset5', 'scene', 'tmc2007_500',
+                        'yeast', 'flags', 'image'.
     """
     data_path = os.path.dirname(__file__) + '/../../data/'
-    skmultilearn_datasets = {'bibtex', 'corel5k', 'emotions',
-                             'enron', 'mediamill', 'medical', 'scene', 'yeast'}
+    skmultilearn_datasets = set([x[0] for x in available_data_sets().keys()] + ['corel5k'])
     other_datasets = {'flags': (7, 'http://www.uco.es/grupos/kdis/MLLResources/ucobigfiles/Datasets/Original/Flags.zip'),
                       'image': (5, 'https://www.openml.org/data/download/21241890/file203856ce269f.arff')}
-    dataset_types = {'bibtex': 'Text', 'corel5k': 'Image', 'emotions': 'Music', 'enron': 'Text', 'flags': 'Image', 'image': 'Image',
-                     'mediamill': 'Video', 'medical': 'Text', 'scene': 'Image', 'yeast': 'Biology'}
+    dataset_types = {'bibtex': 'Text',
+                     'birds': 'Audio',
+                     'corel5k': 'Image',
+                     'delicious': 'Text',
+                     'emotions': 'Music',
+                     'enron': 'Text',
+                     'genbase': 'Biology',
+                     'mediamill': 'Video',
+                     'medical': 'Text',
+                     'rcv1subset1': 'Text',
+                     'rcv1subset2': 'Text',
+                     'rcv1subset3': 'Text',
+                     'rcv1subset4': 'Text',
+                     'rcv1subset5': 'Text',
+                     'scene': 'Image',
+                     'tmc2007_500': 'Text',
+                     'yeast': 'Biology',
+                     'flags': 'Image',
+                     'image': 'Image'}
 
     def __init__(self, name):
         """
         Downloads the dataset given its name.
 
         Args:
-            name (str): Name of the dataset.
+            name (str): One of: 'bibtex', 'birds', 'corel5k', 'delicious', 'emotions', 'enron', 'genbase', 'mediamill',
+                        'medical', 'rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4', 'rcv1subset5', 'scene',
+                        'tmc2007_500', 'yeast', 'flags', 'image'.
         """
         if name not in Dataset.skmultilearn_datasets and name not in Dataset.other_datasets:
             raise NotImplementedError('Dataset <{}> not available. Available datasets: {}'.format(
                 name, Dataset.skmultilearn_datasets.union(set(Dataset.other_datasets.keys()))))
 
+        if name == 'Corel5k':
+            name = 'corel5k'
         self.name = name
 
         if not os.path.isdir(Dataset.data_path):
@@ -46,18 +68,21 @@ class Dataset:
 
     def info(self):
         """
-        Prints information about this dataset.
+        Gives information about this dataset.
+
+        Returns:
+            [pd.DataFrame]: 1x6 dataframe with information.
         """
 
         with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.expand_frame_repr', False):
             card = (self.Y_train.sum() + self.Y_test.sum()) / \
                 (self.Y_train.shape[0] + self.Y_test.shape[0])
-            print(pd.DataFrame({'Type': Dataset.dataset_types[self.name],
+            return pd.DataFrame({'Type': Dataset.dataset_types[self.name],
                                 'Train Instances': self.X_train.shape[0],
                                 'Test Instances': self.X_test.shape[0],
                                 'Attributes': self.X_train.shape[1],
                                 'Labels': self.Y_train.shape[1],
-                                'Cardinality': card}, index=[self.name]))
+                                'Cardinality': card}, index=[self.name])
 
     def __load_skmultilearn_dataset(self, name):
         if name == 'corel5k':
@@ -78,21 +103,6 @@ class Dataset:
         self.Y_train = np.array(self.Y_train.toarray(), dtype=bool)
         self.X_test = self.X_test.toarray()
         self.Y_test = np.array(self.Y_test.toarray(), dtype=bool)
-
-        # mediamill should be reduced to 5000 instances total.
-        # Using 4500 train and 500 test
-        if name == 'mediamill':
-            shuffled = np.arange(self.X_train.shape[0])
-            np.random.shuffle(shuffled)
-            train_idx = shuffled[:4500]
-            self.X_train = self.X_train[train_idx]
-            self.Y_train = self.Y_train[train_idx]
-
-            shuffled = np.arange(self.X_test.shape[0])
-            np.random.shuffle(shuffled)
-            test_idx = shuffled[:500]
-            self.X_test = self.X_test[test_idx]
-            self.Y_test = self.Y_test[test_idx]
 
     def __load_other_dataset(self, name):
         label_count, url = Dataset.other_datasets[name]
@@ -137,7 +147,3 @@ class Dataset:
             self.Y_train = np.array(ds[train_idx, -label_count:], dtype=bool)
             self.X_test = np.array(ds[test_idx, :-label_count], dtype=float)
             self.Y_test = np.array(ds[test_idx, -label_count:], dtype=bool)
-
-
-ds = Dataset('image')
-ds.info()
