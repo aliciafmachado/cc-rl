@@ -4,6 +4,7 @@ from sklearn.metrics import brier_score_loss
 from sklearn.multioutput import ClassifierChain as skClassifierChain
 from sklearn.utils import check_random_state
 
+from .EpsilonApproximationInferer import EpsilonApproximationInferer
 from .ExhaustiveSearchInferer import ExhaustiveSearchInferer
 
 
@@ -51,12 +52,14 @@ class ClassifierChain:
         Args:
             ds (Dataset): Dataset to get the test data from.
             inference_method (str): Inference method to be used in the prediction. One of 
-                ['greedy', 'exhaustive_search'].
+                ['greedy', 'exhaustive_search', 'epsilon_approximation].
             return_num_nodes (bool, optional): If it should return the number of visited 
                 tree nodes during the inference process. Defaults to False.
 
         Returns:
-            np.array: Predicted output of shape (n x d2).
+            np.array: Predicted output of shape (n, d2).
+            int (optional): If return_num_nodes, it is the average number of visited nodes
+                in the tree search.
         """
 
         if inference_method == 'greedy':
@@ -67,6 +70,10 @@ class ClassifierChain:
         elif inference_method == 'exhaustive_search':
             # Exhaustive search inference. O(2^d)
             inferer = ExhaustiveSearchInferer(self.cc)
+            pred, num_nodes = inferer.infer(ds.test_x)
+        elif inference_method == 'epsilon_approximation':
+            # Exhaustive search inference. O(2^d)
+            inferer = EpsilonApproximationInferer(self.cc, kwargs['epsilon'])
             pred, num_nodes = inferer.infer(ds.test_x)
         else:
             raise Exception('This inference method does not exist.')

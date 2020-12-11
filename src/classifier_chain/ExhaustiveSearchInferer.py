@@ -20,38 +20,48 @@ class ExhaustiveSearchInferer:
         """Infers best prediction analyzing all paths in the tree.
 
         Args:
-            x (np.array): Prediction data of shape (n x d1).
+            x (np.array): Prediction data of shape (n, d1).
 
         Returns:
-            np.array: Prediction outputs of shape (n x d2).
+            np.array: Prediction outputs of shape (n, d2).
+            int: If return_num_nodes, it is the average number of visited nodes in the
+                tree search.
         """
         cur_pred = np.zeros(
             (x.shape[0], len(self.cc.estimators_)), dtype=bool)
         cur_p = np.ones((x.shape[0],))
-        best_pred = np.copy(cur_pred)
-        best_p = np.zeros((x.shape[0],))
+        self.__best_pred = np.copy(cur_pred)
+        self.__best_p = np.zeros((x.shape[0],))
 
-        self.__expand(x, cur_pred, cur_p, best_pred, best_p, 0)
+        self.__dfs(x, cur_pred, cur_p, 0)
 
         inv_order = np.empty_like(self.cc.order_)
         inv_order[self.cc.order_] = np.arange(len(self.cc.order_))
-        best_pred = best_pred[:, inv_order]
+        self.__best_pred = self.__best_pred[:, inv_order]
 
-        return best_pred, (1 << len(self.cc.estimators_)) - 1
+        return self.__best_pred, (1 << len(self.cc.estimators_)) - 1
 
-    def __expand(self, x, cur_pred, cur_p, best_pred, best_p, i):
+    def __dfs(self, x, cur_pred, cur_p, i):
+        """Searches through the tree exhaustively. This is vectorized, so it is done in
+        the same way for every row of x.
+
+        Args:
+            x (np.array): Prediction data of shape (n, d1)
+            cur_pred (np.array): Current prediction in the recursion of shape (n, d2)
+            cur_p (np.array): Current accumulated probability in the recursion of shape 
+                (n,)
+            i (int): Index of the current estimator in the recursion.
+        """
+
         if i == len(self.cc.estimators_):
-            change = cur_p > best_p
-            best_pred[change, :] = cur_pred[change, :]
-            best_p[change] = cur_p[change]
+            change = cur_p > self.__best_p
+            self.__best_pred[change, :] = cur_pred[change, :]
+            self.__best_p[change] = cur_p[change]
         else:
             x_aug = np.hstack((x, cur_pred[:, :i]))
             proba = self.cc.estimators_[i].predict_proba(x_aug)
 
-            cur_pred[:, i] = False
-            self.__expand(x, cur_pred, cur_p *
-                          proba[:, 0], best_pred, best_p, i+1)
-
-            cur_pred[:, i] = True
-            self.__expand(x, cur_pred, cur_p *
-                          proba[:, 1], best_pred, best_p, i+1)
+            for k in range(2):
+                cur_pred[:, i] = bool(k)
+                next_p = cur_p * proba[:, k]
+                self.__dfs(x, cur_pred, next_p, i+1)
