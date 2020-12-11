@@ -4,6 +4,7 @@ from sklearn.metrics import brier_score_loss
 from sklearn.multioutput import ClassifierChain as skClassifierChain
 from sklearn.utils import check_random_state
 
+from .BeamSearchInferer import BeamSearchInferer
 from .EpsilonApproximationInferer import EpsilonApproximationInferer
 from .ExhaustiveSearchInferer import ExhaustiveSearchInferer
 
@@ -72,8 +73,12 @@ class ClassifierChain:
             inferer = ExhaustiveSearchInferer(self.cc)
             pred, num_nodes = inferer.infer(ds.test_x)
         elif inference_method == 'epsilon_approximation':
-            # Exhaustive search inference. O(2^d)
+            # Epsilon approximation inference. O(d / epsilon)
             inferer = EpsilonApproximationInferer(self.cc, kwargs['epsilon'])
+            pred, num_nodes = inferer.infer(ds.test_x)
+        elif inference_method == 'beam_search':
+            # Beam search inference. O(d * b)
+            inferer = BeamSearchInferer(self.cc, kwargs['b'])
             pred, num_nodes = inferer.infer(ds.test_x)
         else:
             raise Exception('This inference method does not exist.')

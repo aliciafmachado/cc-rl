@@ -27,11 +27,10 @@ class ExhaustiveSearchInferer:
             int: If return_num_nodes, it is the average number of visited nodes in the
                 tree search.
         """
-        cur_pred = np.zeros(
-            (x.shape[0], len(self.cc.estimators_)), dtype=bool)
-        cur_p = np.ones((x.shape[0],))
+        cur_pred = np.zeros((len(x), len(self.cc.estimators_)), dtype=bool)
+        cur_p = np.ones((len(x),))
         self.__best_pred = np.copy(cur_pred)
-        self.__best_p = np.zeros((x.shape[0],))
+        self.__best_p = np.zeros((len(x),))
 
         self.__dfs(x, cur_pred, cur_p, 0)
 

@@ -18,6 +18,7 @@ class EpsilonApproximationInferer:
             epsilon (float): Epsilon parameter for the inferer.
         """
 
+        assert(0 <= epsilon and epsilon <= 0.5)
         self.cc = classifier_chain
         self.epsilon = epsilon
 
@@ -33,12 +34,11 @@ class EpsilonApproximationInferer:
                 tree search.
         """
 
-        cur_pred = np.zeros(
-            (x.shape[0], len(self.cc.estimators_)), dtype=bool)
+        cur_pred = np.zeros((len(x), len(self.cc.estimators_)), dtype=bool)
         cur_p = np.ones((len(x),))
         mask = np.ones((len(x),), dtype=bool)
         self.__best_pred = np.copy(cur_pred)
-        self.__best_p = np.zeros((x.shape[0],))
+        self.__best_p = np.zeros((len(x),))
 
         self.__n_nodes = 0
         self.__dfs(x, cur_pred, cur_p, 0, mask)
