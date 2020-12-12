@@ -21,7 +21,7 @@ class Dataset:
 
     # FIXME: Removing medical for now, some labels have only one class
     remove_datasets = ['rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4', 
-                       'rcv1subset5', 'medical']
+                       'rcv1subset5', 'medical', 'genbase']
     for r in remove_datasets:
         skmultilearn_datasets.remove(r)
 
@@ -76,6 +76,12 @@ class Dataset:
             self.__load_skmultilearn_dataset(name)
         else:
             self.__load_other_dataset(name)
+        
+        # FIXME: Limiting dataset sizes
+        self.train_x = self.train_x[:5000]
+        self.train_y = self.train_y[:5000]
+        self.test_x = self.test_x[:5000]
+        self.test_y = self.test_y[:5000]
 
     def info(self):
         """Gives information about this dataset.
