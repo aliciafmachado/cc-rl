@@ -80,6 +80,12 @@ class ClassifierChain:
             elif inference_method == 'beam_search':
                 # Beam search inference. O(d * b)
                 inferer = BeamSearchInferer(self.cc, kwargs['b'])
+            elif inference_method == 'monte_carlo':
+                # Monte Carlo sampling inferer. O(d * q)
+                inferer = MonteCarloInferer(self.cc, kwargs['q'], False)
+            elif inference_method == 'efficient_monte_carlo':
+                # Efficient Monte Carlo sampling inferer. O(d * q)
+                inferer = MonteCarloInferer(self.cc, kwargs['q'], True)
             else:
                 raise Exception('This inference method does not exist.')
 
