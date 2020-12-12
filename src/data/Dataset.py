@@ -14,14 +14,13 @@ class Dataset:
     """Downloads and provides a dataset from a set of available datasets.
 
     Available datasets: 'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions', 'enron', 
-        'genbase', 'mediamill', 'scene', 'tmc2007_500', 'yeast', 'flags', 'image'.
+        'genbase', 'mediamill', 'medical', 'scene', 'tmc2007_500', 'yeast', 'flags',
+        'image'.
     """
     data_path = os.path.dirname(__file__) + '/../../data/'
     skmultilearn_datasets = set([x[0] for x in available_data_sets().keys()])
-
-    # FIXME: Removing medical for now, some labels have only one class
     remove_datasets = ['rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4', 
-                       'rcv1subset5', 'medical', 'genbase']
+                       'rcv1subset5']
     for r in remove_datasets:
         skmultilearn_datasets.remove(r)
 
@@ -43,11 +42,6 @@ class Dataset:
         'genbase': 'Biology',
         'mediamill': 'Video',
         'medical': 'Text',
-        'rcv1subset1': 'Text',
-        'rcv1subset2': 'Text',
-        'rcv1subset3': 'Text',
-        'rcv1subset4': 'Text',
-        'rcv1subset5': 'Text',
         'scene': 'Image',
         'tmc2007_500': 'Text',
         'yeast': 'Biology',
@@ -60,7 +54,7 @@ class Dataset:
 
         Args:
             name (str): One of: 'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions', 
-                'enron', 'genbase', 'mediamill', 'rcv1subset5', 'scene', 'tmc2007_500', 
+                'enron', 'genbase', 'mediamill', 'medical', 'scene', 'tmc2007_500', 
                 'yeast', 'flags', 'image'.
         """
         if name not in Dataset.available_datasets:
@@ -76,6 +70,11 @@ class Dataset:
             self.__load_skmultilearn_dataset(name)
         else:
             self.__load_other_dataset(name)
+        
+        scaler = MinMaxScaler()
+        scaler.fit(np.concatenate([self.train_x, self.test_x]))
+        self.train_x = scaler.transform(self.train_x)
+        self.test_x = scaler.transform(self.test_x)
         
         # FIXME: Limiting dataset sizes
         self.train_x = self.train_x[:5000]
@@ -162,8 +161,3 @@ class Dataset:
             self.train_y = y[train_idx]
             self.test_x = x[test_idx]
             self.test_y = y[test_idx]
-
-        scaler = MinMaxScaler()
-        scaler.fit(np.concatenate([self.train_x, self.test_x]))
-        self.train_x = scaler.transform(self.train_x)
-        self.test_x = scaler.transform(self.test_x)

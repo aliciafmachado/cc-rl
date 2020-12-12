@@ -1,9 +1,9 @@
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss
 from sklearn.multioutput import ClassifierChain as skClassifierChain
 from sklearn.utils import check_random_state
 
+from src.utils.LogisticRegressionExtended import LogisticRegressionExtended
 from .classical_inference.BeamSearchInferer import BeamSearchInferer
 from .classical_inference.EpsilonApproximationInferer import EpsilonApproximationInferer
 from .classical_inference.ExhaustiveSearchInferer import ExhaustiveSearchInferer
@@ -28,7 +28,7 @@ class ClassifierChain:
 
         self.__base_estimator = base_estimator
         if base_estimator == 'logistic_regression':
-            base_estimator = LogisticRegression()
+            base_estimator = LogisticRegressionExtended()
 
         self.cc = skClassifierChain(
             base_estimator=base_estimator, order=order, random_state=random_state)
@@ -124,7 +124,7 @@ class ClassifierChain:
 
         if self.__base_estimator == 'logistic_regression':
             for C in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
-                self.cc.estimators_ = [LogisticRegression(
+                self.cc.estimators_ = [LogisticRegressionExtended(
                     C=C) for _ in range(n_estimators)]
 
                 # Fitting them manually to avoid resetting estimators
