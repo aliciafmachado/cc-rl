@@ -14,14 +14,16 @@ class Dataset:
     """Downloads and provides a dataset from a set of available datasets.
 
     Available datasets: 'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions', 'enron', 
-        'genbase', 'mediamill', 'medical', 'rcv1subset1', 'rcv1subset2', 'rcv1subset3', 
-        'rcv1subset4', 'rcv1subset5', 'scene', 'tmc2007_500', 'yeast', 'flags', 'image'.
+        'genbase', 'mediamill', 'scene', 'tmc2007_500', 'yeast', 'flags', 'image'.
     """
     data_path = os.path.dirname(__file__) + '/../../data/'
     skmultilearn_datasets = set([x[0] for x in available_data_sets().keys()])
 
     # FIXME: Removing medical for now, some labels have only one class
-    skmultilearn_datasets.remove('medical')
+    remove_datasets = ['rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4', 
+                       'rcv1subset5', 'medical']
+    for r in remove_datasets:
+        skmultilearn_datasets.remove(r)
 
     other_datasets = {
         'flags': (7, 'http://www.uco.es/grupos/kdis/MLLResources/ucobigfiles/Datasets/'
@@ -58,8 +60,7 @@ class Dataset:
 
         Args:
             name (str): One of: 'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions', 
-                'enron', 'genbase', 'mediamill', 'medical', 'rcv1subset1', 'rcv1subset2', 
-                'rcv1subset3', 'rcv1subset4', 'rcv1subset5', 'scene', 'tmc2007_500', 
+                'enron', 'genbase', 'mediamill', 'rcv1subset5', 'scene', 'tmc2007_500', 
                 'yeast', 'flags', 'image'.
         """
         if name not in Dataset.available_datasets:
