@@ -1,7 +1,9 @@
 import numpy as np
 
+from src.classifier_chain.BaseInferer import BaseInferer
 
-class ExhaustiveSearchInferer:
+
+class ExhaustiveSearchInferer(BaseInferer):
     """Searches all possible paths on the tree to determine the best one by the product of 
     their probabilities. Complexity O(2^d), where d is the number of classes.
     """
@@ -14,9 +16,9 @@ class ExhaustiveSearchInferer:
                 this inference will be used on.
         """
 
-        self.cc = classifier_chain
+        super().__init__(classifier_chain)
 
-    def infer(self, x):
+    def _infer(self, x):
         """Infers best prediction analyzing all paths in the tree.
 
         Args:
@@ -24,19 +26,15 @@ class ExhaustiveSearchInferer:
 
         Returns:
             np.array: Prediction outputs of shape (n, d2).
-            int: If return_num_nodes, it is the average number of visited nodes in the
-                tree search.
+            int: The average number of visited nodes in the tree search.
         """
+
         cur_pred = np.zeros((len(x), len(self.cc.estimators_)), dtype=bool)
         cur_p = np.ones((len(x),))
         self.__best_pred = np.copy(cur_pred)
         self.__best_p = np.zeros((len(x),))
 
         self.__dfs(x, cur_pred, cur_p, 0)
-
-        inv_order = np.empty_like(self.cc.order_)
-        inv_order[self.cc.order_] = np.arange(len(self.cc.order_))
-        self.__best_pred = self.__best_pred[:, inv_order]
 
         return self.__best_pred, (1 << len(self.cc.estimators_)) - 1
 

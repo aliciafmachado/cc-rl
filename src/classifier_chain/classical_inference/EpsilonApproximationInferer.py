@@ -1,7 +1,9 @@
 import numpy as np
 
+from src.classifier_chain.BaseInferer import BaseInferer
 
-class EpsilonApproximationInferer:
+
+class EpsilonApproximationInferer(BaseInferer):
     """Inferer that expands the tree in only selected nodes, where the joint probability
     is more than epsilon. Complexity O(d / epsilon).
 
@@ -18,11 +20,11 @@ class EpsilonApproximationInferer:
             epsilon (float): Epsilon parameter for the inferer.
         """
 
+        super().__init__(classifier_chain)
         assert(0 <= epsilon and epsilon <= 0.5)
-        self.cc = classifier_chain
         self.epsilon = epsilon
 
-    def infer(self, x):
+    def _infer(self, x):
         """Infers prediction by expanding the search in only selected nodes.
 
         Args:
@@ -30,8 +32,7 @@ class EpsilonApproximationInferer:
 
         Returns:
             np.array: Prediction outputs of shape (n, d2).
-            int: If return_num_nodes, it is the average number of visited nodes in the
-                tree search.
+            int: The average number of visited nodes in the tree search.
         """
 
         cur_pred = np.zeros((len(x), len(self.cc.estimators_)), dtype=bool)
@@ -42,11 +43,6 @@ class EpsilonApproximationInferer:
 
         self.__n_nodes = 0
         self.__dfs(x, cur_pred, cur_p, 0, mask)
-
-        inv_order = np.empty_like(self.cc.order_)
-        inv_order[self.cc.order_] = np.arange(len(self.cc.order_))
-        self.__best_pred = self.__best_pred[:, inv_order]
-
         self.__n_nodes = self.__n_nodes / len(x)
 
         return self.__best_pred, self.__n_nodes

@@ -4,9 +4,10 @@ from sklearn.metrics import brier_score_loss
 from sklearn.multioutput import ClassifierChain as skClassifierChain
 from sklearn.utils import check_random_state
 
-from .BeamSearchInferer import BeamSearchInferer
-from .EpsilonApproximationInferer import EpsilonApproximationInferer
-from .ExhaustiveSearchInferer import ExhaustiveSearchInferer
+from .classical_inference.BeamSearchInferer import BeamSearchInferer
+from .classical_inference.EpsilonApproximationInferer import EpsilonApproximationInferer
+from .classical_inference.ExhaustiveSearchInferer import ExhaustiveSearchInferer
+from .classical_inference.MonteCarloInferer import MonteCarloInferer
 
 
 class ClassifierChain:
@@ -68,20 +69,21 @@ class ClassifierChain:
             # https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/multioutput.py
             pred, num_nodes = self.cc.predict(
                 ds.test_x), len(self.cc.estimators_)
-        elif inference_method == 'exhaustive_search':
-            # Exhaustive search inference. O(2^d)
-            inferer = ExhaustiveSearchInferer(self.cc)
-            pred, num_nodes = inferer.infer(ds.test_x)
-        elif inference_method == 'epsilon_approximation':
-            # Epsilon approximation inference. O(d / epsilon)
-            inferer = EpsilonApproximationInferer(self.cc, kwargs['epsilon'])
-            pred, num_nodes = inferer.infer(ds.test_x)
-        elif inference_method == 'beam_search':
-            # Beam search inference. O(d * b)
-            inferer = BeamSearchInferer(self.cc, kwargs['b'])
-            pred, num_nodes = inferer.infer(ds.test_x)
         else:
-            raise Exception('This inference method does not exist.')
+            if inference_method == 'exhaustive_search':
+                # Exhaustive search inference. O(2^d)
+                inferer = ExhaustiveSearchInferer(self.cc)
+            elif inference_method == 'epsilon_approximation':
+                # Epsilon approximation inference. O(d / epsilon)
+                inferer = EpsilonApproximationInferer(
+                    self.cc, kwargs['epsilon'])
+            elif inference_method == 'beam_search':
+                # Beam search inference. O(d * b)
+                inferer = BeamSearchInferer(self.cc, kwargs['b'])
+            else:
+                raise Exception('This inference method does not exist.')
+
+            pred, num_nodes = inferer.infer(ds.test_x)
 
         if return_num_nodes:
             return pred, num_nodes
