@@ -8,7 +8,7 @@ class ExhaustiveSearchInferer(BaseInferer):
     their probabilities. Complexity O(2^d), where d is the number of classes.
     """
 
-    def __init__(self, classifier_chain):
+    def __init__(self, classifier_chain, loss):
         """Default constructor.
 
         Args:
@@ -16,7 +16,7 @@ class ExhaustiveSearchInferer(BaseInferer):
                 this inference will be used on.
         """
 
-        super().__init__(classifier_chain)
+        super().__init__(classifier_chain, loss)
 
     def _infer(self, x):
         """Infers best prediction analyzing all paths in the tree.
@@ -60,5 +60,5 @@ class ExhaustiveSearchInferer(BaseInferer):
 
             for k in range(2):
                 cur_pred[:, i] = bool(k)
-                next_p = cur_p * proba[:, k]
+                next_p = self._new_score(cur_p, proba[:, k])
                 self.__dfs(x, cur_pred, next_p, i+1)

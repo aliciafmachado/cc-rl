@@ -11,7 +11,7 @@ class BeamSearchInferer(BaseInferer):
     b = 2^d.
     """
 
-    def __init__(self, classifier_chain, b):
+    def __init__(self, classifier_chain, loss, b):
         """Default constructor.
 
         Args:
@@ -20,7 +20,7 @@ class BeamSearchInferer(BaseInferer):
             b (int): b parameter for the inferer.
         """
 
-        super().__init__(classifier_chain)
+        super().__init__(classifier_chain, loss)
         assert(b >= 1)
         assert(isinstance(b, int))
         self.b = b
@@ -67,7 +67,7 @@ class BeamSearchInferer(BaseInferer):
                 proba = self.cc.estimators_[i].predict_proba(x_aug)
                 n_nodes += 1
 
-                new_beam_p[:, 2*j:2*j+2] = proba * beam_p[:, j].reshape(-1, 1)
+                new_beam_p[:, 2*j:2*j+2] = self._new_score(beam_p[:, j].reshape(-1, 1), proba)
                 new_beam[:, 2*j:2*j+2, :i] = beam[:, j, :i].reshape(-1, 1, i)
                 new_beam[:, 2*j, i] = False
                 new_beam[:, 2*j+1, i] = True

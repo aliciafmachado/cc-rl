@@ -8,7 +8,7 @@ class MonteCarloInferer(BaseInferer):
     on each estimator. Complexity O(d * q)
     """
 
-    def __init__(self, classifier_chain, q, efficient):
+    def __init__(self, classifier_chain, loss, q, efficient):
         """Default constructor.
 
         Args:
@@ -18,7 +18,7 @@ class MonteCarloInferer(BaseInferer):
             efficient (bool): If this is the efficient inference or not.
         """
 
-        super().__init__(classifier_chain)
+        super().__init__(classifier_chain, loss)
         assert(q >= 1)
         assert(isinstance(q, int))
         assert(isinstance(efficient, bool))
@@ -60,8 +60,8 @@ class MonteCarloInferer(BaseInferer):
                 choice = w > proba[:, 0]
                 cur_pred[:, i] = choice
                 choice = choice.astype(int).reshape(-1, 1)
-                cur_p = cur_p * \
-                    np.take_along_axis(proba, choice, axis=1).flatten()
+                cur_p = self._new_score(cur_p, np.take_along_axis(
+                    proba, choice, axis=1).flatten())
 
             # Efficient method takes the one with highest probability, the non-efficient
             # takes the mode

@@ -13,23 +13,28 @@ from zipfile import ZipFile
 class Dataset:
     """Downloads and provides a dataset from a set of available datasets.
 
-    Available datasets: 'bibtex', 'birds', 'corel5k', 'delicious', 'emotions', 'enron', 
+    Available datasets: 'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions', 'enron', 
         'genbase', 'mediamill', 'medical', 'rcv1subset1', 'rcv1subset2', 'rcv1subset3', 
         'rcv1subset4', 'rcv1subset5', 'scene', 'tmc2007_500', 'yeast', 'flags', 'image'.
     """
     data_path = os.path.dirname(__file__) + '/../../data/'
-    skmultilearn_datasets = set(
-        [x[0] for x in available_data_sets().keys()] + ['corel5k'])
+    skmultilearn_datasets = set([x[0] for x in available_data_sets().keys()])
+
+    # FIXME: Removing medical for now, some labels have only one class
+    skmultilearn_datasets.remove('medical')
+
     other_datasets = {
         'flags': (7, 'http://www.uco.es/grupos/kdis/MLLResources/ucobigfiles/Datasets/'
                   'Original/Flags.zip'),
         'image': (5,
                   'https://www.openml.org/data/download/21241890/file203856ce269f.arff')
     }
+    available_datasets = skmultilearn_datasets.union(
+        set(other_datasets.keys()))
     dataset_types = {
         'bibtex': 'Text',
         'birds': 'Audio',
-        'corel5k': 'Image',
+        'Corel5k': 'Image',
         'delicious': 'Text',
         'emotions': 'Music',
         'enron': 'Text',
@@ -52,21 +57,15 @@ class Dataset:
         """Downloads the dataset given its name.
 
         Args:
-            name (str): One of: 'bibtex', 'birds', 'corel5k', 'delicious', 'emotions', 
+            name (str): One of: 'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions', 
                 'enron', 'genbase', 'mediamill', 'medical', 'rcv1subset1', 'rcv1subset2', 
                 'rcv1subset3', 'rcv1subset4', 'rcv1subset5', 'scene', 'tmc2007_500', 
                 'yeast', 'flags', 'image'.
         """
-        if name not in Dataset.skmultilearn_datasets and \
-                name not in Dataset.other_datasets:
-            available_ds = Dataset.skmultilearn_datasets.union(
-                set(Dataset.other_datasets.keys()))
-            raise NotImplementedError(
-                'Dataset <{}> not available. Available datasets: {}'.format(
-                    name, available_ds))
+        if name not in Dataset.available_datasets:
+            raise ValueError('Dataset <{}> not available. Available datasets: {}'.format(
+                name, Dataset.available_datasets))
 
-        if name == 'Corel5k':
-            name = 'corel5k'
         self.name = name
 
         if not os.path.isdir(Dataset.data_path):
@@ -96,9 +95,6 @@ class Dataset:
                                  'Cardinality': card}, index=[self.name])
 
     def __load_skmultilearn_dataset(self, name):
-        if name == 'corel5k':
-            name = 'Corel5k'
-
         # Supress print
         orig_stdout = sys.stdout
         sys.stdout = open(os.devnull, 'w')

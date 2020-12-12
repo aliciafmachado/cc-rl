@@ -72,20 +72,23 @@ class ClassifierChain:
         else:
             if inference_method == 'exhaustive_search':
                 # Exhaustive search inference. O(2^d)
-                inferer = ExhaustiveSearchInferer(self.cc)
+                inferer = ExhaustiveSearchInferer(self.cc, kwargs['loss'])
             elif inference_method == 'epsilon_approximation':
                 # Epsilon approximation inference. O(d / epsilon)
                 inferer = EpsilonApproximationInferer(
                     self.cc, kwargs['epsilon'])
             elif inference_method == 'beam_search':
                 # Beam search inference. O(d * b)
-                inferer = BeamSearchInferer(self.cc, kwargs['b'])
+                inferer = BeamSearchInferer(
+                    self.cc, kwargs['loss'], kwargs['b'])
             elif inference_method == 'monte_carlo':
                 # Monte Carlo sampling inferer. O(d * q)
-                inferer = MonteCarloInferer(self.cc, kwargs['q'], False)
+                inferer = MonteCarloInferer(
+                    self.cc, kwargs['loss'], kwargs['q'], False)
             elif inference_method == 'efficient_monte_carlo':
                 # Efficient Monte Carlo sampling inferer. O(d * q)
-                inferer = MonteCarloInferer(self.cc, kwargs['q'], True)
+                inferer = MonteCarloInferer(
+                    self.cc, kwargs['loss'], kwargs['q'], True)
             else:
                 raise Exception('This inference method does not exist.')
 

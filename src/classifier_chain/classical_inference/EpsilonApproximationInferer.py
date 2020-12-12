@@ -74,15 +74,13 @@ class EpsilonApproximationInferer(BaseInferer):
             self.__n_nodes += np.count_nonzero(mask)
 
             # The node with highest proba will always be visited
-            proba_max = np.max(proba, axis=1)
-            proba_max *= cur_p
+            proba_max = self._new_score(cur_p, np.max(proba, axis=1))
             k = np.argmax(proba, axis=1)
             cur_pred[mask, i] = k.astype(bool)
             self.__dfs(x, cur_pred, proba_max, i+1, mask)
 
             # The node with lowest proba has to pass a condition to be visited
-            proba_min = np.min(proba, axis=1)
-            proba_min *= cur_p
+            proba_min = self._new_score(cur_p, np.min(proba, axis=1))
             condition = proba_min >= self.epsilon
             new_mask = np.copy(mask)
             new_mask[new_mask] = condition

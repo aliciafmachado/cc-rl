@@ -5,15 +5,19 @@ class BaseInferer:
     """Base abstract class for infererence algorithms.
     """
 
-    def __init__(self, classifier_chain):
+    def __init__(self, classifier_chain, loss='exact_match'):
         """Default constructor.
 
         Args:
             classifier_chain (sklearn.multioutput.ClassifierChain): Classifier chain that 
                 this inference will be used on.
+            loss (str): 'exact_match' or 'hamming', specifying which loss this prediction
+                should minimize.
         """
 
         self.cc = classifier_chain
+        assert(loss == 'exact_match' or loss == 'hamming')
+        self.loss = loss
 
     def infer(self, x):
         """Infers a prediction according to the child inferer algorithm.
@@ -41,6 +45,25 @@ class BaseInferer:
         """        
 
         raise NotImplementedError
+
+    def _new_score(self, past_score, new_proba):
+        """Updates the current score in the tree path. This depends on the loss function
+        being used: if 'exact_match', this score is the conditional probability and if
+        'hamming', it is the sum of probabilities.
+
+        Args:
+            past_score (np.array): Scores until this estimator, shape (n,)
+            new_proba (np.array): Probabilities on the new estimator prediction, shape
+                (n,)
+
+        Returns:
+            np.array: Score of this new prediction, shape (n,)
+        """
+
+        if self.loss == 'exact_match':
+            return past_score * new_proba
+        else:
+            return past_score + new_proba
 
     def __fix_order(self, pred):
         """Estimators in classifier chain are not necessarily in the label order. This
