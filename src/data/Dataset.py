@@ -19,7 +19,7 @@ class Dataset:
     """
     data_path = os.path.dirname(__file__) + '/../../data/'
     skmultilearn_datasets = set([x[0] for x in available_data_sets().keys()])
-    remove_datasets = ['rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4', 
+    remove_datasets = ['rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4',
                        'rcv1subset5']
     for r in remove_datasets:
         skmultilearn_datasets.remove(r)
@@ -70,12 +70,12 @@ class Dataset:
             self.__load_skmultilearn_dataset(name)
         else:
             self.__load_other_dataset(name)
-        
+
         scaler = MinMaxScaler()
         scaler.fit(np.concatenate([self.train_x, self.test_x]))
         self.train_x = scaler.transform(self.train_x)
         self.test_x = scaler.transform(self.test_x)
-        
+
         # FIXME: Limiting dataset sizes
         self.train_x = self.train_x[:5000]
         self.train_y = self.train_y[:5000]

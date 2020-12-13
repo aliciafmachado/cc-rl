@@ -125,7 +125,7 @@ class ClassifierChain:
         if self.__base_estimator == 'logistic_regression':
             for C in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
                 self.cc.estimators_ = [LogisticRegressionExtended(
-                    C=C) for _ in range(n_estimators)]
+                    C=C, solver='liblinear') for _ in range(n_estimators)]
 
                 # Fitting them manually to avoid resetting estimators
                 for chain_idx, estimator in enumerate(self.cc.estimators_):
