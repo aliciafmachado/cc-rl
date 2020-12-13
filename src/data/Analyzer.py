@@ -57,10 +57,10 @@ class Analyzer:
         for i in range(len(self.datasets)):
             ds = self.datasets[i]
             print('Dataset {}/{}: {} - Loading'.format(
-                i+1, len(self.datasets), ds), end='... ')
+                i+1, len(self.datasets), ds), end='... ', flush=True)
             dataset = Dataset(ds)
 
-            print('Fitting', end='... ')
+            print('Fitting', end='... ', flush=True)
             cc = ClassifierChain()
             cc.fit(dataset)
 
@@ -68,7 +68,7 @@ class Analyzer:
             for method in self.methods:
                 for p in self.params[method]:
                     column = method + ' ' + str(p)
-                    print(column, end='... ')
+                    print(column, end='... ', flush=True)
 
                     # Limiting exhaustive search, it has exponential complexity
                     if dataset.train_y.shape[1] > 15 and method == 'exhaustive_search':

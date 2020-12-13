@@ -3,4 +3,7 @@ Reinforcement learning based classifier chains inference.
 
 To start developing:
 
-```pip install -e .```
+```
+pip install -r requirements.txt
+pip install -e .
+```

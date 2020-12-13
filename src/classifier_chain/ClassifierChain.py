@@ -122,6 +122,8 @@ class ClassifierChain:
         self.__initialize_order(n_estimators)
         x_aug = np.hstack((ds.train_x, ds.train_y[:, self.cc.order_]))
 
+        # FIXME 1: Stop using test_y here, do cv with train instead
+        # TODO: Check this out https://www.researchgate.net/publication/220320172_Trust_Region_Newton_Method_for_Logistic_Regression
         if self.__base_estimator == 'logistic_regression':
             for C in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
                 self.cc.estimators_ = [LogisticRegressionExtended(
