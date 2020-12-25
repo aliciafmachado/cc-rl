@@ -140,6 +140,7 @@ class Dataset:
             self.train_y = np.array(self.train_y.toarray(), dtype=bool)
             self.test_x = self.test_x.toarray()
             self.test_y = np.array(self.test_y.toarray(), dtype=bool)
+            
         elif name == 'image':
             path = Dataset.data_path + 'image.arff'
 
