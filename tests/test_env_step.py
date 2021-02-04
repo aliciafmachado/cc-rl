@@ -6,5 +6,7 @@ dataset = Dataset('birds')
 cc = ClassifierChain()
 cc.fit(dataset)
 env = Env(cc, dataset)
+print(env.reset())
+steps = [1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1]
 for i in range(19):
-    print(env.step(1))
+    print(env.step(steps[i]))

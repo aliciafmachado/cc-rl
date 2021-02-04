@@ -49,15 +49,11 @@ class Env(gym.Env):
     '''
     Return the new observation
     '''
-    if self.current_estimator > 0:
-      xy = np.append(self.x, self.path[:self.current_estimator])
+    self.current_estimator += 1
 
-    else:
-      xy = self.x 
+    xy = np.append(self.x, self.path[:self.current_estimator])
 
     obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
-    
-    self.current_estimator += 1
 
     return obs
 
@@ -75,23 +71,21 @@ class Env(gym.Env):
       If the environment is done: if we arrived in the end of the
       classifier chain
     '''
-    # Execute the action
+
+    # append last observation
+    self.path[self.current_estimator] = action
+
+    # Passing left probability
+    self.probabilities[self.current_estimator] = self.obs[action]
+    self.current_probability *= self.obs[action]
+
     if self.current_estimator == self.classifier_chain.n_labels - 1:
       self.current_probability *= self.obs[action]
       return self.obs, self.path, self.probabilities, self.current_probability, True 
 
     else:
-
+      # Take new observation
       self.obs = self._next_observation(action)
-      
-      # append last observation
-      if self.current_estimator > 0:
-        self.path[self.current_estimator - 1] = action
-
-        # Passing left probability
-        self.probabilities[self.current_estimator - 1] = self.obs[0]
-        self.current_probability *= self.obs[action]
-
       return self.obs, self.path, self.probabilities, 0, False
 
 
@@ -101,12 +95,15 @@ class Env(gym.Env):
     '''
     self.current_probability = 1
     self.current_estimator = 0
-    self.path = np.zeros((classifier_chain.n_labels,), dtype=int)
-    self.probabilities = np.zeros((classifier_chain.n_labels,), dtype=float)
+    self.path = np.zeros((self.classifier_chain.n_labels,), dtype=int)
+    self.probabilities = np.zeros((self.classifier_chain.n_labels,), dtype=float)
     self.renderer.reset()
 
     # We reset x as well
-    self.x = self.dataset.train_x(np.random.randint(0, len(self.dataset.train_x)))
+    self.x = self.dataset.train_x[np.random.randint(0, len(self.dataset.train_x))]
+
+    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(self.x.reshape(1,-1)).flatten()
+    return self.obs, self.path, self.probabilities
 
   def render(self):
     self.renderer.render()
