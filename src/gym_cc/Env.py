@@ -27,8 +27,6 @@ class Env(gym.Env):
   '''
   def __init__(self, classifier_chain):
     self.classifier_chain = classifier_chain
-    self.current_step = 0
-    self.current_probability = 1
     self.action_space = spaces.Discrete(2)
     self.observation_path_space = spaces.MultiDiscrete(np.ones((classifier_chain.n_labels,), dtype=int) * 2)
     self.observation_probabilities_space = spaces.Box(low=0, high=1, shape=(classifier_chain.n_labels,), dtype=np.float16)
@@ -36,6 +34,7 @@ class Env(gym.Env):
     self.path = np.zeros((classifier_chain.n_labels,), dtype=bool)
     self.probabilities = np.zeros((classifier_chain.n_labels,), dtype=float)
     self.current_estimator = 0
+    self.current_probability = 1
 
     self.renderer = Renderer('print', self.observation_path_space, self.observation_probabilities_space)
 
