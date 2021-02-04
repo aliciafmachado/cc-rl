@@ -34,13 +34,13 @@ class Env(gym.Env):
     self.observation_path_space = spaces.MultiDiscrete(np.ones((classifier_chain.n_labels,), dtype=int) * 2)
     self.observation_probabilities_space = spaces.Box(low=0, high=1, shape=(classifier_chain.n_labels,), dtype=np.float16)
 
-    self.path = np.zeros((classifier_chain.n_labels - 1,), dtype=int)
-    self.probabilities = np.zeros((classifier_chain.n_labels - 1,), dtype=float)
-    self.obs
+    self.path = np.zeros((classifier_chain.n_labels,), dtype=int)
+    self.probabilities = np.zeros((classifier_chain.n_labels,), dtype=float)
+    self.obs = None
     self.current_estimator = 0
     self.current_probability = 1
     self.dataset = dataset
-    self.x = self.dataset.train_x(np.random.randint(0, len(self.dataset.train_x)))
+    self.x = self.dataset.train_x[np.random.randint(0, len(self.dataset.train_x))]
 
     self.renderer = Renderer('print', self.observation_path_space, self.observation_probabilities_space)
 
@@ -55,7 +55,7 @@ class Env(gym.Env):
     else:
       xy = self.x 
 
-    obs = self.cc.estimators_[self.current_estimator].predict_proba(xy)
+    obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
     
     self.current_estimator += 1
 
@@ -76,11 +76,14 @@ class Env(gym.Env):
       classifier chain
     '''
     # Execute the action
-    if self.current_step == self.classifier_chain.n_labels:
+    if self.current_estimator == self.classifier_chain.n_labels - 1:
       self.current_probability *= self.obs[action]
       return self.obs, self.path, self.probabilities, self.current_probability, True 
 
     else:
+
+      self.obs = self._next_observation(action)
+      
       # append last observation
       if self.current_estimator > 0:
         self.path[self.current_estimator - 1] = action
@@ -89,8 +92,6 @@ class Env(gym.Env):
         self.probabilities[self.current_estimator - 1] = self.obs[0]
         self.current_probability *= self.obs[action]
 
-      self.obs = self._next_observation(action)
-      
       return self.obs, self.path, self.probabilities, 0, False
 
 
@@ -100,8 +101,8 @@ class Env(gym.Env):
     '''
     self.current_probability = 1
     self.current_estimator = 0
-    self.path = np.zeros((classifier_chain.n_labels - 1,), dtype=int)
-    self.probabilities = np.zeros((classifier_chain.n_labels - 1,), dtype=float)
+    self.path = np.zeros((classifier_chain.n_labels,), dtype=int)
+    self.probabilities = np.zeros((classifier_chain.n_labels,), dtype=float)
     self.renderer.reset()
 
     # We reset x as well
