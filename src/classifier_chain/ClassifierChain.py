@@ -43,6 +43,7 @@ class ClassifierChain:
                 base_estimator = 'logistic_regression'.
         """
 
+        self.n_labels = ds.train_y.shape[1]
         if optimization:
             self.__optimized_fit(ds)
         else:
