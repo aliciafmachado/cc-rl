@@ -134,5 +134,6 @@ dmypy.json
 # Mac settings
 .DS_Store
 
-# VS code
+# IDE configuration files
+.idea
 .vscode
