@@ -42,8 +42,7 @@ class Env(gym.Env):
     self.dataset = dataset
     self.x = self.dataset.train_x[np.random.randint(0, len(self.dataset.train_x))]
 
-    self.renderer = Renderer('print', self.observation_path_space, self.observation_probabilities_space)
-
+    self.renderer = Renderer('draw', self.path, self.probabilities)
 
   def _next_observation(self, action):
     '''
@@ -56,7 +55,6 @@ class Env(gym.Env):
     obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
 
     return obs
-
 
   def step(self, action):
     '''
@@ -88,7 +86,6 @@ class Env(gym.Env):
       self.obs = self._next_observation(action)
       return self.obs, self.path, self.probabilities, 0, False
 
-
   def reset(self):
     '''
     Resets the environment
@@ -106,4 +103,4 @@ class Env(gym.Env):
     return self.obs, self.path, self.probabilities
 
   def render(self):
-    self.renderer.render()
+    self.renderer.render(self.current_estimator)
