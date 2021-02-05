@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
 from src.data.Dataset import Dataset
-from src.classifier_chain.ClassifierChain import ClassifierChain
+# from src.classifier_chain.ClassifierChain import ClassifierChain
 import random
 
 class GeneticAlgorithm:
@@ -59,7 +59,7 @@ class GeneticAlgorithm:
             p1, p2 = random.sample(self.population.individuals, 2)
             self.population.individuals.remove(p1)
             self.population.individuals.remove(p2)
-            
+
 
         new_population = random.sample(new_population, self.num_individuals-2)
         new_population.extend(winners)
