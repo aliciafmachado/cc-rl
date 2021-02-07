@@ -5,7 +5,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 import pygame
 
 class Renderer:
-    constants = { 'width': -1, 'height': -1, 'margin': -1, 'font_size': 40, 'radius': 10, 'fps': 10, 'wheel_sensibility': 1.25, 'bar_margin': 10 }
+    constants = { 'width': -1, 'height': -1, 'margin': -1, 'font_size': 30, 'radius': 10, 'fps': 10, 'wheel_sensibility': 1.25, 'bar_margin': 10 }
     colors = { 'background': (24, 26, 27), 'font': (211, 211, 211), 'black': (0, 0, 0), 'line': (9, 255, 243), 'highlight': (255, 43, 0), 'highlight2': (255, 43, 0) }
 
     def __init__(self, mode, n_labels):
@@ -25,7 +25,7 @@ class Renderer:
             # Setup display
             self.constants['width'] = pygame.display.Info().current_w
             self.constants['height'] = pygame.display.Info().current_h
-            self.font = pygame.font.SysFont('sans-serif', self.constants['font_size'])
+            self.font = pygame.font.SysFont('helvetica', self.constants['font_size'])
             self.display = pygame.display.set_mode((self.constants['width'], self.constants['height']), pygame.RESIZABLE, 32)
             self.display.fill(Renderer.colors['background'])
 
@@ -106,14 +106,15 @@ class Renderer:
                 elif event.type == pygame.MOUSEMOTION:
                     if self.panning:
                         for i in range(2):
-                            self.translation[i] += event.pos[i] - self.mouse_pos[i]
+                            self.translation[i] += (event.pos[i] - self.mouse_pos[i])
                         self.mouse_pos = event.pos
                 elif event.type == pygame.MOUSEWHEEL:
                     if event.y == 1:
                         scale2 = self.scale * self.constants['wheel_sensibility']
                     else:
                         scale2 = self.scale / self.constants['wheel_sensibility']
-                    self.translation += (np.array(pygame.mouse.get_pos(), dtype=float) * (self.scale - scale2)).astype(int)
+                    p = (np.array(pygame.mouse.get_pos(), dtype=float) - self.translation) / self.scale
+                    self.translation += (p * (self.scale - scale2)).astype(int)
                     self.scale = scale2
                 elif event.type == pygame.QUIT:
                     exit()
@@ -151,7 +152,7 @@ class Renderer:
 
                         text = '{:.1f}'.format(node[2][i][0])
                         text_blit = self.font.render(text, False, Renderer.colors['font'])
-                        self.display.blit(text_blit, (p1 + p2) / 2 - np.array([self.constants['font_size'] * 0.5, self.constants['font_size'] * 0.35]))
+                        self.display.blit(text_blit, (p1 + p2) / 2 - np.array([self.constants['font_size'] * 0.6, self.constants['font_size'] * 0.45]))
 
                         if best2:
                             st.append((node[2][i], best+1))
