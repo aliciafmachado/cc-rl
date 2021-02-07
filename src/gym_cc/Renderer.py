@@ -5,32 +5,31 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 import pygame
 
 class Renderer:
-    WIDTH = 1024
-    HEIGHT = 800
-    BAR_HEIGHT = 100
-    FONT_HEIGHT = 30
-    RADIUS = 10
-    FPS = 10
-    ROOT_COORDS = [WIDTH / 2, RADIUS]
+    constants = { 'width': 1028, 'height': 800, 'bar_height': 100, 'font_height': 30, 'radius': 10, 'fps': 10 }
     colors = { 'background': (255, 255, 255), 'black': (0, 0, 0), 'line': (0, 0, 0), 'highlight': (255, 0, 0) }
 
     def __init__(self, mode, n_labels):
         assert(mode == 'draw' or mode == 'print')
 
         self.mode = mode
-        self.coords = Renderer.ROOT_COORDS
         self.cur_reward = 1.
         self.best_reward = 0.
-        self.cur_depth = 0
-        self.depth = n_labels
 
         if mode == 'draw':
             pygame.init()
             pygame.font.init()
-            self.font = pygame.font.SysFont('Arial', Renderer.FONT_HEIGHT)
-            self.display = pygame.display.set_mode((Renderer.WIDTH, Renderer.HEIGHT), 0, 32)
+            self.font = pygame.font.SysFont('Arial', self.constants['font_height'])
+            self.display = pygame.display.set_mode((self.constants['width'], self.constants['height']), 0, 32)
             self.display.fill(Renderer.colors['background'])
             self.clock = pygame.time.Clock()
+
+            self.translation = np.array([0, 0], dtype=int)
+            self.scale = 1.
+            self.panning = False
+            self.root = [1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
+            self.cur_depth = 0
+            self.cur_node = self.root
+            self.depth = n_labels
 
     def render(self, action, probability):
         self.cur_reward *= probability
@@ -46,10 +45,11 @@ class Renderer:
         if self.mode == 'print':
             print(' Reward: {:.4f}'.format(self.cur_reward))
         else:
-            self.coords = Renderer.ROOT_COORDS
+            self.coords = self.root[1]
         
         self.cur_depth = 0
         self.cur_reward = 1
+        self.cur_node = self.root
 
     def __render_print(self, action, probability):
         if action == -1:
@@ -58,35 +58,73 @@ class Renderer:
             print('R', end='')
     
     def __render_draw(self, action, probability):
-        def draw_branch(last_coords, next_coords):
-            pygame.draw.circle(self.display, Renderer.colors['line'], self.coords, Renderer.RADIUS)
-            pygame.draw.line(self.display, Renderer.colors['line'], self.coords, next_coords)
-            pygame.draw.circle(self.display, Renderer.colors['highlight'], next_coords, Renderer.RADIUS)
-        
-        def update_bar(cur_reward, best_reward):
-            text = 'Current reward: {:.6f} Best reward: {:.6f}'.format(cur_reward, best_reward)
-            text_blit = self.font.render(text, False, Renderer.colors['black'])
-            rect = pygame.Rect((0, Renderer.HEIGHT - Renderer.FONT_HEIGHT), (Renderer.WIDTH, Renderer.HEIGHT))
-            pygame.draw.rect(self.display, self.colors['background'], rect)
-            self.display.blit(text_blit, (0, Renderer.HEIGHT - Renderer.FONT_HEIGHT))
-        
-        next_coords = self.__next_coords(action)
-        draw_branch(self.coords, next_coords)
-        self.coords = next_coords
+        def update_tree(action, probability):
+            def next_coords(cur_coords):
+                next_coords = np.array([0, 0], dtype=int)
+                next_coords[1] = cur_coords[1] + (self.constants['height'] - self.constants['bar_height']) / self.depth
 
-        update_bar(self.cur_reward, self.best_reward)
+                wstep = self.constants['width'] / (2 ** (self.cur_depth + 2))
+                if action == 0:
+                    next_coords[0] = cur_coords[0] + wstep
+                else:
+                    next_coords[0] = cur_coords[0] - wstep
+                
+                return next_coords
+
+            action = 0 if action == -1 else 1
+
+            if self.cur_node[2][action] is None:
+                prob2 = self.cur_node[0] * probability
+                coords2 = next_coords(self.cur_node[1])
+                self.cur_node[2][action] = [prob2, coords2, [None, None]]
+
+            self.cur_reward *= probability
+            self.cur_node = self.cur_node[2][action]
+
+        def update_events():
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    self.panning = True
+                    self.mouse_pos = event.pos
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    self.panning = False
+                elif event.type == pygame.MOUSEMOTION:
+                    if self.panning:
+                        for i in range(2):
+                            self.translation[i] += event.pos[i] - self.mouse_pos[i]
+                        self.mouse_pos = event.pos
+
+        def draw():
+            self.display.fill(self.colors['background'])
+
+            # Tree
+            st = []
+            st.append(self.root)
+            while len(st) != 0:
+                node = st[-1]
+                st.pop()
+
+                pygame.draw.circle(self.display, Renderer.colors['line'], self.translation + node[1], self.constants['radius'])
+                for i in range(2):
+                    if node[2][i] is not None:
+                        pygame.draw.line(self.display, Renderer.colors['line'], self.translation + node[1], self.translation + node[2][i][1])
+                        st.append(node[2][i])
+
+            # Borders
+            start_pos = (0, self.constants['height'] - self.constants['font_height'])
+            end_pos = (self.constants['width'], self.constants['height'] - self.constants['font_height'])
+            pygame.draw.line(self.display, Renderer.colors['black'], start_pos, end_pos)
+
+            # Bottom bar
+            text = 'Current reward: {:.6f} Best reward: {:.6f}'.format(self.cur_node[0], self.best_reward)
+            text_blit = self.font.render(text, False, Renderer.colors['black'])
+            rect = pygame.Rect((0, self.constants['height'] - self.constants['font_height']), (self.constants['width'], self.constants['height']))
+            pygame.draw.rect(self.display, self.colors['background'], rect)
+            self.display.blit(text_blit, (0, self.constants['height'] - self.constants['font_height'])) 
+
+        update_tree(action, probability)
+        update_events()
+        draw()
 
         pygame.display.update()
-        self.clock.tick(Renderer.FPS)
-
-    def __next_coords(self, action):
-        next_coords = [0, 0]
-        next_coords[1] = self.coords[1] + (Renderer.HEIGHT - Renderer.BAR_HEIGHT) / self.depth
-
-        wstep = Renderer.WIDTH / (2 ** (self.cur_depth + 2))
-        if action == -1:
-            next_coords[0] = self.coords[0] + wstep
-        else:
-            next_coords[0] = self.coords[0] - wstep
-        
-        return next_coords
+        self.clock.tick(self.constants['fps'])
