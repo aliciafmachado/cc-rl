@@ -1,8 +1,9 @@
 import numpy as np
 from typing import List
 from src.data.Dataset import Dataset
-# from src.classifier_chain.ClassifierChain import ClassifierChain
+from src.classifier_chain.ClassifierChain import ClassifierChain
 import random
+import itertools
 
 class GeneticAlgorithm:
 
@@ -44,37 +45,84 @@ class GeneticAlgorithm:
             individual.calculate_fitness(self.ds)
 
     def __start_generation(self):
-        for i in range(self.k):
-            order = np.arange(self.num_labels)
-            np.random.shuffle(order)
-            individual = Individual(order)
+        for _ in range(self.k):
+            individual = self.__new_individual()
             self.population.individuals.append(individual)
 
     def __next_generation(self):
         players = random.sample(self.population.individuals, self.k)
         winners = self.population.fittest_individual(players)
         new_population = []
-        while len(new_population) < self.num_individuals and len(self.population.individuals) > 0:
+        while len(players) > 1:       
             # select two individuals and remove them
-            p1, p2 = random.sample(self.population.individuals, 2)
-            self.population.individuals.remove(p1)
-            self.population.individuals.remove(p2)
+            p1, p2 = random.sample(players, 2)
+            players.remove(p1)
+            players.remove(p2)
 
+            # crossover
+            individual = self.__crossover(p1, p2)
+            new_population.append(individual)
 
-        new_population = random.sample(new_population, self.num_individuals-2)
+        # mutate one child
+        self.__mutate(random.choice(new_population))
+
+        # elitism selection
         new_population.extend(winners)
+        
+        # complete new generation with random individuals
+        while len(new_population) < self.num_individuals:
+            individual = self.__new_individual()
+            new_population.append(individual)
+
         random.shuffle(new_population)
         self.population.individuals = new_population
 
 
-    def __mutate(self, p1, p2):
-        # TODO
-        pass
-    
-    def __show(self, generation):
-        # TODO
-        pass
+    def __crossover(self, p1, p2):
+        donner = p1.order.copy()
+        receptor = p2.order.copy()
 
+        # select sub-chain from p1 with uniform prob
+        sub_chain = random.choice(list(itertools.combinations(range(self.num_labels + 1), r=2)))
+        sub_chain = list(sub_chain)
+        sub_chain[1] -= 1
+
+        # remove sub_chain itens from p2
+        for i in range(sub_chain[0], sub_chain[1] + 1):
+            receptor.remove(donner[i])
+
+        if len(receptor) == 0:
+            new_order = donner
+            individual = Individual(new_order)
+            return individual
+
+        # extend sub_chain
+        j = np.random.randint(len(receptor))
+        new_order = receptor[:j]
+        new_order.extend(donner[sub_chain[0]:sub_chain[1]+1])
+        new_order.extend(receptor[j:])
+        individual = Individual(new_order)
+        return individual
+
+    def __mutate(self, p):
+        idx = range(len(self.num_labels))
+        i1, i2 = random.sample(idx, 2)
+        p.label_order[i1], p.label_order[i2] = p.label_order[i2], p.label_order[i1]
+
+    def __new_individual(self):
+        order = np.arange(self.num_labels)
+        np.random.shuffle(order)
+        individual = Individual(order)
+        return individual   
+
+    def __show(self, generation):
+        p1, p2 = self.population.fittest_individual(self.population.individuals)
+        print("Generation {}".format(generation))
+        print("Number of individuals = {}".format(len(self.population.individuals)))
+        print("Elitism selection")
+        print("Individual 1 = {}, score = {:.2f}".format(p1.label_order, p1.fitness))
+        print("Individual 2 = {}, score = {:.2f}".format(p2.label_order, p2.fitness))
+        print()
 
 class Individual:
     """

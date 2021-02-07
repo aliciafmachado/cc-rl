@@ -111,10 +111,10 @@ class ClassifierChain:
         Returns:
             Accuracy measure (ACC)
         """
-        y_pred = self.cc.predict(ds.test_x, inference_method="greedy")
+        y_pred = self.predict(ds.test_x, inference_method="greedy")
         y_test = ds.test_y
         acc_list = []
-        for i in range(y_true.shape[0]):
+        for i in range(y_test.shape[0]):
             set_true = set( np.where(y_test[i])[0] )
             set_pred = set( np.where(y_pred[i])[0] )
             tmp_a = None
@@ -136,7 +136,7 @@ class ClassifierChain:
         Returns:
             Exact Match score (EM)
         """       
-        y_pred = self.cc.predict(ds.test_x, inference_method="greedy")
+        y_pred = self.predict(ds.test_x, inference_method="greedy")
         y_test = ds.test_y
         return accuracy_score(y_test, y_pred)
 
@@ -150,7 +150,7 @@ class ClassifierChain:
         Returns:
             Hamming Loss (HL)
         """       
-        y_pred = self.cc.predict(ds.test_x, inference_method="greedy")
+        y_pred = self.predict(ds.test_x, inference_method="greedy")
         y_test = ds.test_y
         return hamming_loss(y_test, y_pred)        
 
@@ -227,5 +227,3 @@ class ClassifierChain:
                 self.cc.order_ = self.cc.random_state.permutation(n_estimators)
         elif sorted(self.order_) != list(range(n_estimators)):
             raise ValueError("invalid order")
-    
-    def 
