@@ -5,7 +5,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 import pygame
 
 class Renderer:
-    constants = { 'width': 1028, 'height': 800, 'bar_height': 100, 'font_height': 30, 'radius': 10, 'fps': 10 }
+    constants = { 'width': 1028, 'height': 800, 'bar_height': 100, 'font_height': 30, 'radius': 10, 'fps': 10, 'wheel_sensibility': 1.25 }
     colors = { 'background': (255, 255, 255), 'black': (0, 0, 0), 'line': (0, 0, 0), 'highlight': (255, 0, 0) }
 
     def __init__(self, mode, n_labels):
@@ -19,10 +19,12 @@ class Renderer:
             pygame.init()
             pygame.font.init()
             self.font = pygame.font.SysFont('Arial', self.constants['font_height'])
-            self.display = pygame.display.set_mode((self.constants['width'], self.constants['height']), 0, 32)
+            self.display = pygame.display.set_mode((self.constants['width'], self.constants['height']), pygame.RESIZABLE, 32)
             self.display.fill(Renderer.colors['background'])
             self.clock = pygame.time.Clock()
 
+            self.width = self.constants['width']
+            self.height = self.constants['height']
             self.translation = np.array([0, 0], dtype=int)
             self.scale = 1.
             self.panning = False
@@ -58,6 +60,9 @@ class Renderer:
             print('R', end='')
     
     def __render_draw(self, action, probability):
+        def transform(pos):
+            return pos * self.scale + self.translation
+
         def update_tree(action, probability):
             def next_coords(cur_coords):
                 next_coords = np.array([0, 0], dtype=int)
@@ -93,6 +98,18 @@ class Renderer:
                         for i in range(2):
                             self.translation[i] += event.pos[i] - self.mouse_pos[i]
                         self.mouse_pos = event.pos
+                elif event.type == pygame.MOUSEWHEEL:
+                    if event.y == 1:
+                        scale2 = self.scale * self.constants['wheel_sensibility']
+                    else:
+                        scale2 = self.scale / self.constants['wheel_sensibility']
+                    self.translation += (np.array(pygame.mouse.get_pos(), dtype=float) * (self.scale - scale2)).astype(int)
+                    self.scale = scale2
+                elif event.type == pygame.QUIT:
+                    exit()
+                elif event.type == pygame.WINDOWRESIZED:
+                    self.width = event.x
+                    self.height = event.y
 
         def draw():
             self.display.fill(self.colors['background'])
@@ -104,23 +121,18 @@ class Renderer:
                 node = st[-1]
                 st.pop()
 
-                pygame.draw.circle(self.display, Renderer.colors['line'], self.translation + node[1], self.constants['radius'])
+                pygame.draw.circle(self.display, Renderer.colors['line'], transform(node[1]), self.constants['radius'] * self.scale)
                 for i in range(2):
                     if node[2][i] is not None:
-                        pygame.draw.line(self.display, Renderer.colors['line'], self.translation + node[1], self.translation + node[2][i][1])
+                        pygame.draw.line(self.display, Renderer.colors['line'], transform(node[1]), transform(node[2][i][1]))
                         st.append(node[2][i])
-
-            # Borders
-            start_pos = (0, self.constants['height'] - self.constants['font_height'])
-            end_pos = (self.constants['width'], self.constants['height'] - self.constants['font_height'])
-            pygame.draw.line(self.display, Renderer.colors['black'], start_pos, end_pos)
 
             # Bottom bar
             text = 'Current reward: {:.6f} Best reward: {:.6f}'.format(self.cur_node[0], self.best_reward)
             text_blit = self.font.render(text, False, Renderer.colors['black'])
-            rect = pygame.Rect((0, self.constants['height'] - self.constants['font_height']), (self.constants['width'], self.constants['height']))
+            rect = pygame.Rect((0, self.height - self.constants['font_height']), (self.width, self.height))
             pygame.draw.rect(self.display, self.colors['background'], rect)
-            self.display.blit(text_blit, (0, self.constants['height'] - self.constants['font_height'])) 
+            self.display.blit(text_blit, (0, self.height - self.constants['font_height'])) 
 
         update_tree(action, probability)
         update_events()
