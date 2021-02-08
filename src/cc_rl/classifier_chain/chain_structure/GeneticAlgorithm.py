@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
-from src.data.Dataset import Dataset
-from src.classifier_chain.ClassifierChain import ClassifierChain
+from cc_rl.data.Dataset import Dataset
+from cc_rl.classifier_chain.ClassifierChain import ClassifierChain
 import random
 import itertools
 

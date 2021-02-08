@@ -18,11 +18,9 @@ class Dataset:
         'image'.
     """
     data_path = os.path.dirname(__file__) + '/../../data/'
-    skmultilearn_datasets = set([x[0] for x in available_data_sets().keys()])
-    remove_datasets = ['rcv1subset1', 'rcv1subset2', 'rcv1subset3', 'rcv1subset4',
-                       'rcv1subset5', 'delicious']
-    for r in remove_datasets:
-        skmultilearn_datasets.remove(r)
+    skmultilearn_datasets = {'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions',
+                             'enron',  'genbase', 'mediamill', 'medical', 'scene',
+                             'tmc2007_500', 'yeast'}
 
     other_datasets = {
         'flags': (7, 'http://www.uco.es/grupos/kdis/MLLResources/ucobigfiles/Datasets/'

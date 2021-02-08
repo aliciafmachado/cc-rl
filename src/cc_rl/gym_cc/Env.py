@@ -2,7 +2,7 @@ import gym
 from gym import spaces
 import numpy as np
 
-from src.gym_cc.Renderer import Renderer
+from cc_rl.gym_cc.Renderer import Renderer
 
 
 class Env(gym.Env):
