@@ -3,8 +3,8 @@ import pandas as pd
 import time
 from sklearn.metrics import zero_one_loss, hamming_loss
 
-from src.classifier_chain.ClassifierChain import ClassifierChain
-from src.data.Dataset import Dataset
+from cc_rl.classifier_chain.ClassifierChain import ClassifierChain
+from cc_rl.data.Dataset import Dataset
 
 
 class Analyzer:

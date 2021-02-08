@@ -1,6 +1,6 @@
-from src.classifier_chain.ClassifierChain import ClassifierChain
-from src.data.Dataset import Dataset
-from src.gym_cc.Env import Env
+from src import ClassifierChain
+from src import Dataset
+from src import Env
 
 dataset = Dataset('birds')
 cc = ClassifierChain()

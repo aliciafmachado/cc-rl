@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.classifier_chain.BaseInferer import BaseInferer
+from cc_rl.classifier_chain.BaseInferer import BaseInferer
 
 
 class BeamSearchInferer(BaseInferer):

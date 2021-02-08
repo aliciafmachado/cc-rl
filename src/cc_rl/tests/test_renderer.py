@@ -1,4 +1,4 @@
-from src.gym_cc.Renderer import Renderer
+from src import Renderer
 import random
 
 DEPTH = 10

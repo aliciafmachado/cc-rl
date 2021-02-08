@@ -3,7 +3,7 @@ from sklearn.metrics import brier_score_loss, accuracy_score, hamming_loss
 from sklearn.multioutput import ClassifierChain as skClassifierChain
 from sklearn.utils import check_random_state
 
-from src.utils.LogisticRegressionExtended import LogisticRegressionExtended
+from cc_rl.utils.LogisticRegressionExtended import LogisticRegressionExtended
 from .classical_inference.BeamSearchInferer import BeamSearchInferer
 from .classical_inference.EpsilonApproximationInferer import EpsilonApproximationInferer
 from .classical_inference.ExhaustiveSearchInferer import ExhaustiveSearchInferer

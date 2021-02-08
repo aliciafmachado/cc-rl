@@ -1,7 +1,5 @@
 import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
-from gym.envs.toy_text import discrete
+from gym import spaces
 import numpy as np
 
 from src.gym_cc.Renderer import Renderer
