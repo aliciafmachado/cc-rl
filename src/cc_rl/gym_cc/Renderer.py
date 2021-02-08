@@ -2,6 +2,11 @@ import numpy as np
 import os
 import sys
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
+try:
+    get_ipython()
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+except NameError:
+    pass
 import pygame
 
 class Renderer:

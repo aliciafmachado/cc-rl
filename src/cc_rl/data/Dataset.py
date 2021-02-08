@@ -17,7 +17,7 @@ class Dataset:
         'genbase', 'mediamill', 'medical', 'scene', 'tmc2007_500', 'yeast', 'flags',
         'image'.
     """
-    data_path = os.path.dirname(__file__) + '/../../data/'
+    data_path = os.path.dirname(__file__) + '/../../../data/'
     skmultilearn_datasets = {'bibtex', 'birds', 'Corel5k', 'delicious', 'emotions',
                              'enron',  'genbase', 'mediamill', 'medical', 'scene',
                              'tmc2007_500', 'yeast'}
@@ -55,6 +55,9 @@ class Dataset:
                 'enron', 'genbase', 'mediamill', 'medical', 'scene', 'tmc2007_500', 
                 'yeast', 'flags', 'image'.
         """
+        # FIXME: skmultilearn temporary down
+        assert(name == 'flags' or name == 'image')
+
         if name not in Dataset.available_datasets:
             raise ValueError('Dataset <{}> not available. Available datasets: {}'.format(
                 name, Dataset.available_datasets))
