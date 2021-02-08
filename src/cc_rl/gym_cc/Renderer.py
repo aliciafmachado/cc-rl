@@ -67,6 +67,10 @@ class Renderer:
         self.cur_reward = 1
         self.cur_node = self.root
         self.cur_actions = []
+    
+    def next_sample(self):
+        self.reset()
+        self.cur_root = [1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
 
     def __render_print(self, action, probability):
         if action == -1:

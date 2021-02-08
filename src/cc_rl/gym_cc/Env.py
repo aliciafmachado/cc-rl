@@ -38,7 +38,8 @@ class Env(gym.Env):
     self.current_estimator = 0
     self.current_probability = 1
     self.dataset = dataset
-    self.x = self.dataset.train_x[np.random.randint(0, len(self.dataset.train_x))]
+    self.cur_sample = 0
+    self.x = self.dataset.train_x[self.cur_sample]
 
     self.renderer = Renderer('draw', classifier_chain.n_labels)
 
@@ -94,11 +95,14 @@ class Env(gym.Env):
     self.probabilities = np.zeros((self.classifier_chain.n_labels,), dtype=float)
     self.renderer.reset()
 
-    # We reset x as well
-    self.x = self.dataset.train_x[np.random.randint(0, len(self.dataset.train_x))]
-
     self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(self.x.reshape(1,-1)).flatten()
     return self.obs, self.path, self.probabilities
+  
+  def next_sample(self):
+    self.cur_sample += 1
+    self.x = self.dataset.train_x[self.cur_sample]
+    self.reset()
+    self.renderer.next_sample()
 
   def render(self, action, probability):
     self.renderer.render(action, probability)
