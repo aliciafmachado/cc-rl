@@ -55,9 +55,6 @@ class Dataset:
                 'enron', 'genbase', 'mediamill', 'medical', 'scene', 'tmc2007_500', 
                 'yeast', 'flags', 'image'.
         """
-        # FIXME: skmultilearn temporary down
-        assert(name == 'flags' or name == 'image')
-
         if name not in Dataset.available_datasets:
             raise ValueError('Dataset <{}> not available. Available datasets: {}'.format(
                 name, Dataset.available_datasets))

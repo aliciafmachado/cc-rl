@@ -36,7 +36,7 @@ class GeneticAlgorithm:
             self.__calculate_fitness()
             self.__show(i)
 
-        return self.population.fittest_individual()
+        return self.population.fittest_individual(self.population.individuals)
 
 
     def __calculate_fitness(self):
@@ -79,8 +79,8 @@ class GeneticAlgorithm:
 
 
     def __crossover(self, p1, p2):
-        donner = p1.order.copy()
-        receptor = p2.order.copy()
+        donner = list(p1.label_order.copy())
+        receptor = list(p2.label_order.copy())
 
         # select sub-chain from p1 with uniform prob
         sub_chain = random.choice(list(itertools.combinations(range(self.num_labels + 1), r=2)))
@@ -105,7 +105,7 @@ class GeneticAlgorithm:
         return individual
 
     def __mutate(self, p):
-        idx = range(len(self.num_labels))
+        idx = range(self.num_labels)
         i1, i2 = random.sample(idx, 2)
         p.label_order[i1], p.label_order[i2] = p.label_order[i2], p.label_order[i1]
 
@@ -130,7 +130,7 @@ class Individual:
     """
     def __init__(self, label_order: List[int]):
         self._fitness = 0
-        self.label_order = label_order
+        self.label_order = np.array(label_order)
         self.cc = ClassifierChain(order=label_order)
 
     def calculate_fitness(self, ds):
@@ -155,7 +155,6 @@ class Population:
     def num_individuals(self) -> int:
         return len(self.individuals)
     
-    @property
     def fittest_individual(self, players) -> Individual:
         # return two most fittest individuals (elitism selection)
         return sorted(players, key=lambda individual: individual.fitness)[-2:]

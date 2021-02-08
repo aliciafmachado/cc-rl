@@ -111,7 +111,7 @@ class ClassifierChain:
         Returns:
             Accuracy measure (ACC)
         """
-        y_pred = self.predict(ds.test_x, inference_method="greedy")
+        y_pred = self.predict(ds, inference_method="greedy")
         y_test = ds.test_y
         acc_list = []
         for i in range(y_test.shape[0]):
@@ -136,7 +136,7 @@ class ClassifierChain:
         Returns:
             Exact Match score (EM)
         """       
-        y_pred = self.predict(ds.test_x, inference_method="greedy")
+        y_pred = self.predict(ds, inference_method="greedy")
         y_test = ds.test_y
         return accuracy_score(y_test, y_pred)
 
@@ -150,7 +150,7 @@ class ClassifierChain:
         Returns:
             Hamming Loss (HL)
         """       
-        y_pred = self.predict(ds.test_x, inference_method="greedy")
+        y_pred = self.predict(ds, inference_method="greedy")
         y_test = ds.test_y
         return hamming_loss(y_test, y_pred)        
 
@@ -190,7 +190,7 @@ class ClassifierChain:
                     estimator.fit(
                         x_aug[:, :(ds.train_x.shape[1] + chain_idx)], y)
 
-                pred = self.cc.predict(ds.test_x)
+                pred = self.cc.predict(ds)
                 score = np.array([brier_score_loss(ds.test_y[:, i], pred[:, i])
                                   for i in range(n_estimators)])
                 score = score[self.cc.order_]
