@@ -16,7 +16,7 @@ class Env(gym.Env):
   You only receive a reward in the end and it corresponds to the final 
   joint probability
   '''
-  def __init__(self, classifier_chain, dataset, random_seed=42):
+  def __init__(self, classifier_chain, dataset, display='none', random_seed=42):
     '''
     Environment constructor
     Args:
@@ -41,7 +41,7 @@ class Env(gym.Env):
     self.cur_sample = 0
     self.x = self.dataset.train_x[self.cur_sample]
 
-    self.renderer = Renderer('draw', classifier_chain.n_labels)
+    self.renderer = Renderer(display, classifier_chain.n_labels)
 
   def _next_observation(self, action):
     '''

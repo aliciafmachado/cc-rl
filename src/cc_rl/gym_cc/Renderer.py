@@ -14,7 +14,7 @@ class Renderer:
     colors = { 'background': (24, 26, 27), 'font': (211, 211, 211), 'black': (0, 0, 0), 'line': (9, 255, 243), 'highlight': (255, 43, 0), 'highlight2': (255, 43, 0) }
 
     def __init__(self, mode, n_labels):
-        assert(mode == 'draw' or mode == 'print')
+        assert(mode == 'none' or mode == 'draw' or mode == 'print')
 
         self.mode = mode
         self.cur_reward = 1.
@@ -37,21 +37,16 @@ class Renderer:
             self.clock = pygame.time.Clock()
             self.width = self.constants['width']
             self.height = self.constants['height']
-            self.translation = np.array([self.width * 0.025, self.height * 0.05], dtype=int)
-            self.scale = 0.9
-            self.panning = False
-            self.root = [1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
-            self.cur_depth = 0
-            self.cur_node = self.root
             self.depth = n_labels
+            self.next_sample()
 
     def render(self, action, probability):
         self.cur_reward *= probability
         if self.mode == 'print':
             self.__render_print(action, probability)
-        else:
+        elif self.mode == 'draw':
             self.__render_draw(action, probability)
-        self.cur_depth += 1
+            self.cur_depth += 1
     
     def reset(self):
         if self.cur_reward > self.best_reward:
@@ -60,17 +55,26 @@ class Renderer:
         
         if self.mode == 'print':
             print(' Reward: {:.4f}'.format(self.cur_reward))
-        else:
-            self.coords = self.root[1]
+        elif self.mode == 'draw':
+            self.cur_node = self.root
+            self.cur_depth = 0
         
-        self.cur_depth = 0
         self.cur_reward = 1
-        self.cur_node = self.root
         self.cur_actions = []
     
     def next_sample(self):
-        self.reset()
-        self.cur_root = [1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
+        self.best_reward = 0.
+        self.best_actions = []
+        self.cur_reward = 1
+        self.cur_actions = []
+
+        if self.mode == 'draw':
+            self.cur_depth = 0
+            self.root = [1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
+            self.cur_node = self.root
+            self.translation = np.array([self.width * 0.025, self.height * 0.05], dtype=int)
+            self.scale = 0.9
+            self.panning = False
 
     def __render_print(self, action, probability):
         if action == -1:
