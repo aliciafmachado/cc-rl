@@ -190,7 +190,7 @@ class ClassifierChain:
                     estimator.fit(
                         x_aug[:, :(ds.train_x.shape[1] + chain_idx)], y)
 
-                pred = self.cc.predict(ds)
+                pred = self.cc.predict(ds.test_x)
                 score = np.array([brier_score_loss(ds.test_y[:, i], pred[:, i])
                                   for i in range(n_estimators)])
                 score = score[self.cc.order_]
