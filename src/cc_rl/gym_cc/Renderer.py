@@ -33,6 +33,7 @@ class Renderer:
             self.font = pygame.font.SysFont('helvetica', self.constants['font_size'])
             self.display = pygame.display.set_mode((self.constants['width'], self.constants['height']), pygame.RESIZABLE, 32)
             self.display.fill(Renderer.colors['background'])
+            self.node_id_cnt = 1
 
             self.clock = pygame.time.Clock()
             self.width = self.constants['width']
@@ -67,10 +68,12 @@ class Renderer:
         self.best_actions = []
         self.cur_reward = 1
         self.cur_actions = []
+        self.node_id_cnt = 1
 
         if self.mode == 'draw':
             self.cur_depth = 0
-            self.root = [1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
+            self.root = [self.node_id_cnt, 1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
+            self.node_id_cnt += 1
             self.cur_node = self.root
             self.translation = np.array([self.width * 0.025, self.height * 0.05], dtype=int)
             self.scale = 0.9
@@ -101,13 +104,14 @@ class Renderer:
 
             action = 0 if action == -1 else 1
 
-            if self.cur_node[2][action] is None:
-                coords2 = next_coords(self.cur_node[1])
-                self.cur_node[2][action] = [probability, coords2, [None, None]]
+            if self.cur_node[3][action] is None:
+                coords2 = next_coords(self.cur_node[2])
+                self.cur_node[3][action] = [self.node_id_cnt, probability, coords2, [None, None]]
+                self.node_id_cnt += 1
 
             self.cur_reward *= probability
             self.cur_actions.append(action)
-            self.cur_node = self.cur_node[2][action]
+            self.cur_node = self.cur_node[3][action]
 
         def update_events():
             for event in pygame.event.get():
@@ -145,32 +149,32 @@ class Renderer:
                 node, best = st[-1]
                 st.pop()
 
-                if node == self.cur_node:
-                    pygame.draw.circle(self.display, Renderer.colors['highlight'], transform(node[1]), self.constants['radius'] * self.scale)
+                if node[0] == self.cur_node[0]:
+                    pygame.draw.circle(self.display, Renderer.colors['highlight'], transform(node[2]), self.constants['radius'] * self.scale)
                 elif best:
-                    pygame.draw.circle(self.display, Renderer.colors['highlight2'], transform(node[1]), self.constants['radius'] * self.scale)
+                    pygame.draw.circle(self.display, Renderer.colors['highlight2'], transform(node[2]), self.constants['radius'] * self.scale)
                 else:
-                    pygame.draw.circle(self.display, Renderer.colors['line'], transform(node[1]), self.constants['radius'] * self.scale)
+                    pygame.draw.circle(self.display, Renderer.colors['line'], transform(node[2]), self.constants['radius'] * self.scale)
 
                 for i in range(2):
-                    if node[2][i] is not None:
+                    if node[3][i] is not None:
                         best2 = len(self.best_actions) == 0 or (best and self.best_actions[best-1] == i)
 
-                        p1 = transform(node[1])
-                        p2 = transform(node[2][i][1])
+                        p1 = transform(node[2])
+                        p2 = transform(node[3][i][2])
                         if best2:
                             pygame.draw.line(self.display, Renderer.colors['highlight2'], p1, p2, 2)
                         else:
                             pygame.draw.line(self.display, Renderer.colors['line'], p1, p2, 2)
 
-                        text = '{:.1f}'.format(node[2][i][0])
+                        text = '{:.1f}'.format(node[3][i][1])
                         text_blit = self.font.render(text, False, Renderer.colors['font'])
                         self.display.blit(text_blit, (p1 + p2) / 2 - np.array([self.constants['font_size'] * 0.6, self.constants['font_size'] * 0.45]))
 
                         if best2:
-                            st.append((node[2][i], best+1))
+                            st.append((node[3][i], best+1))
                         else:
-                            st.append((node[2][i], 0))
+                            st.append((node[3][i], 0))
 
             # Bottom bar
             text = 'Current reward: {:.2e}  Best reward: {:.2e}'.format(self.cur_reward, self.best_reward)
