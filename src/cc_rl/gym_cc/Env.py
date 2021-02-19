@@ -28,9 +28,7 @@ class Env(gym.Env):
     np.random.seed(random_seed)
 
     self.classifier_chain = classifier_chain
-    self.action_space = spaces.Discrete(2)
-    self.observation_path_space = spaces.MultiDiscrete(np.ones((classifier_chain.n_labels,), dtype=int) * 2)
-    self.observation_probabilities_space = spaces.Box(low=0, high=1, shape=(classifier_chain.n_labels,), dtype=np.float16)
+    self.action_space = [-1, 1]
 
     self.path = np.zeros((classifier_chain.n_labels,), dtype=int)
     self.probabilities = np.zeros((classifier_chain.n_labels,), dtype=float)
@@ -43,7 +41,7 @@ class Env(gym.Env):
 
     self.renderer = Renderer(display, classifier_chain.n_labels)
 
-  def _next_observation(self, action):
+  def _next_observation(self):
     '''
     Return the new observation
     '''
@@ -73,18 +71,18 @@ class Env(gym.Env):
     self.path[self.current_estimator] = action
 
     # Passing left probability
-    self.probabilities[self.current_estimator] = self.obs[action]
-    self.current_probability *= self.obs[action]
+    self.probabilities[self.current_estimator] = self.obs[(action + 1) // 2]
+    self.current_probability *= self.obs[(action + 1) // 2]
 
     self.renderer.render(action, self.obs[action])
 
     if self.current_estimator == self.classifier_chain.n_labels - 1:
-      self.current_probability *= self.obs[action]
+      self.current_probability *= self.obs[(action + 1) // 2]
       return self.obs, self.path, self.probabilities, self.current_probability, True 
 
     else:
       # Take new observation
-      self.obs = self._next_observation(action)
+      self.obs = self._next_observation()
       return self.obs, self.path, self.probabilities, 0, False
 
   def reset(self):
