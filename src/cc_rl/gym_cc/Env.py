@@ -76,6 +76,8 @@ class Env(gym.Env):
     self.probabilities[self.current_estimator] = self.obs[action]
     self.current_probability *= self.obs[action]
 
+    self.renderer.render(action, self.obs[action])
+
     if self.current_estimator == self.classifier_chain.n_labels - 1:
       self.current_probability *= self.obs[action]
       return self.obs, self.path, self.probabilities, self.current_probability, True 
