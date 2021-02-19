@@ -1,6 +1,7 @@
-import torch
 from cc_rl.rl.Agent import Agent
 from cc_rl.rl.QModel import QModel
+import numpy as np
+import torch
 from torch.utils.data.dataloader import default_collate
 
 class QAgent(Agent):
@@ -51,6 +52,15 @@ class QAgent(Agent):
                 next_action = self.model.choose_action(action_history, proba_history, next_proba)
                 # Converts actions from {0, 1} to {-1, 1}
                 next_action = int(2*next_action-1)
+
+                r = np.random.rand()
+                if r < 0.5:
+                    r = np.random.rand()
+                    if r < 0.5:
+                        next_action = -1
+                    else:
+                        next_action = 1
+
                 next_proba, action_history, proba_history, final_value, end = self.environment.step(next_action)
 
                 # Adding past actions to the history

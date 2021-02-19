@@ -39,7 +39,7 @@ class Env(gym.Env):
     self.cur_sample = 0
     self.x = self.dataset.train_x[self.cur_sample]
 
-    self.renderer = Renderer(display, classifier_chain.n_labels)
+    self.renderer = Renderer(display, classifier_chain.n_labels + 1)
 
   def _next_observation(self):
     '''
@@ -74,7 +74,7 @@ class Env(gym.Env):
     self.probabilities[self.current_estimator] = self.obs[(action + 1) // 2]
     self.current_probability *= self.obs[(action + 1) // 2]
 
-    self.renderer.render(action, self.obs[action])
+    self.renderer.render(action, self.obs[(action + 1) // 2])
 
     if self.current_estimator == self.classifier_chain.n_labels - 1:
       self.current_probability *= self.obs[(action + 1) // 2]

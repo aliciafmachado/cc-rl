@@ -11,7 +11,7 @@ import pygame
 
 class Renderer:
     constants = { 'width': -1, 'height': -1, 'margin': -1, 'font_size': 30, 'radius': 10, 'fps': 10, 'wheel_sensibility': 1.25, 'bar_margin': 10 }
-    colors = { 'background': (24, 26, 27), 'font': (211, 211, 211), 'black': (0, 0, 0), 'line': (9, 255, 243), 'highlight': (255, 43, 0), 'highlight2': (255, 43, 0) }
+    colors = { 'background': (24, 26, 27), 'font': (211, 211, 211), 'black': (0, 0, 0), 'line': (100, 100, 0), 'highlight': (9, 255, 243), 'highlight2': (255, 43, 0) }
 
     def __init__(self, mode, n_labels):
         assert(mode == 'none' or mode == 'draw' or mode == 'print')
@@ -50,7 +50,7 @@ class Renderer:
             self.cur_depth += 1
     
     def reset(self):
-        if self.cur_reward > self.best_reward:
+        if self.cur_reward > self.best_reward and self.cur_reward != 1:
             self.best_reward = self.cur_reward
             self.best_actions = self.cur_actions
         
@@ -167,7 +167,7 @@ class Renderer:
                         else:
                             pygame.draw.line(self.display, Renderer.colors['line'], p1, p2, 2)
 
-                        text = '{:.1f}'.format(node[3][i][1])
+                        text = '{:.1f}'.format(round(node[3][i][1], 1))
                         text_blit = self.font.render(text, False, Renderer.colors['font'])
                         self.display.blit(text_blit, (p1 + p2) / 2 - np.array([self.constants['font_size'] * 0.6, self.constants['font_size'] * 0.45]))
 
