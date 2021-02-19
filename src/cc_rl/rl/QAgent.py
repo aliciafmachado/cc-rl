@@ -49,6 +49,8 @@ class QAgent(Agent):
 
                 # Choosing the next action using the agent
                 next_action = self.model.choose_action(action_history, proba_history, next_proba)
+                # Converts actions from {0, 1} to {-1, 1}
+                next_action = int(2*next_action-1)
                 next_proba, action_history, proba_history, final_value, end = self.environment.step(next_action)
 
                 # Adding past actions to the history
@@ -65,6 +67,7 @@ class QAgent(Agent):
         actions_history = torch.tensor(actions_history).float()
         probas_history = torch.tensor(probas_history).float()
         next_actions = torch.tensor(next_actions).float()
+        print(next_actions)
         next_probas = torch.tensor(next_probas).float()
         final_values = torch.tensor(final_values).float()
 
