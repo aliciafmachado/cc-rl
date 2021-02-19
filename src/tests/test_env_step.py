@@ -7,6 +7,6 @@ cc = ClassifierChain()
 cc.fit(dataset)
 env = Env(cc, dataset, display='draw')
 print(env.reset())
-steps = [1, 1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, 1, -1, 1, 1, -1, 1, 1]
+steps = [1, 1, -1, 1, 1, -1]
 for i in range(6):
     print(env.step(steps[i]))
