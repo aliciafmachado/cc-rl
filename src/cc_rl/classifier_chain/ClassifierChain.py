@@ -2,7 +2,10 @@ import numpy as np
 from sklearn.metrics import brier_score_loss, accuracy_score, hamming_loss
 from sklearn.multioutput import ClassifierChain as skClassifierChain
 from sklearn.utils import check_random_state
+from typing import Optional
+from nptyping import NDArray
 
+from cc_rl.data.Dataset import Dataset
 from cc_rl.utils.LogisticRegressionExtended import LogisticRegressionExtended
 from .classical_inference.BeamSearchInferer import BeamSearchInferer
 from .classical_inference.EpsilonApproximationInferer import EpsilonApproximationInferer
@@ -14,12 +17,12 @@ class ClassifierChain:
     """Base classifier chain to be used to compare different inference methods.
     """
 
-    def __init__(self, base_estimator='logistic_regression', order='random',
-                 random_state=0):
+    def __init__(self, base_estimator: str = 'logistic_regression', order: str = 'random',
+                 random_state: int = 0):
         """Default constructor.
 
         Args:
-            base_estimator (str or sklearn.base.BaseEstimator, optional): Base estimator 
+            base_estimator (str or sklearn.base.BaseEstimator, optional): Base estimator
                 for each node of the chain. Defaults to 'logistic_regression'.
             order (str or list, optional): Labels classification order. Defaults to
                 'random'.
@@ -32,8 +35,9 @@ class ClassifierChain:
 
         self.cc = skClassifierChain(
             base_estimator=base_estimator, order=order, random_state=random_state)
+        self.n_labels = -1
 
-    def fit(self, ds, optimization=True):
+    def fit(self, ds: Dataset, optimization: bool = True):
         """Fits the base estimators.
 
         Args:
@@ -49,7 +53,8 @@ class ClassifierChain:
         else:
             self.cc.fit(ds.train_x, ds.train_y)
 
-    def predict(self, ds, inference_method, return_num_nodes=False, **kwargs):
+    def predict(self, ds: Dataset, inference_method: str, return_num_nodes: bool = False,
+                **kwargs):
         """Predicts the test's labels using a chosen inference method.
 
         Args:
@@ -73,23 +78,23 @@ class ClassifierChain:
         else:
             if inference_method == 'exhaustive_search':
                 # Exhaustive search inference. O(2^d)
-                inferer = ExhaustiveSearchInferer(self.cc, kwargs['loss'])
+                inferer = ExhaustiveSearchInferer(self.cc.order_, kwargs['loss'])
             elif inference_method == 'epsilon_approximation':
                 # Epsilon approximation inference. O(d / epsilon)
                 inferer = EpsilonApproximationInferer(
-                    self.cc, kwargs['epsilon'])
+                    self.cc.order_, kwargs['epsilon'])
             elif inference_method == 'beam_search':
                 # Beam search inference. O(d * b)
                 inferer = BeamSearchInferer(
-                    self.cc, kwargs['loss'], kwargs['b'])
+                    self.cc.order_, kwargs['loss'], kwargs['b'])
             elif inference_method == 'monte_carlo':
                 # Monte Carlo sampling inferer. O(d * q)
                 inferer = MonteCarloInferer(
-                    self.cc, kwargs['loss'], kwargs['q'], False)
+                    self.cc.order_, kwargs['loss'], kwargs['q'], False)
             elif inference_method == 'efficient_monte_carlo':
                 # Efficient Monte Carlo sampling inferer. O(d * q)
                 inferer = MonteCarloInferer(
-                    self.cc, kwargs['loss'], kwargs['q'], True)
+                    self.cc.order_, kwargs['loss'], kwargs['q'], True)
             else:
                 raise Exception('This inference method does not exist.')
 
@@ -100,7 +105,7 @@ class ClassifierChain:
         else:
             return pred
 
-    def __optimized_fit(self, ds):
+    def __optimized_fit(self, ds: Dataset):
         """Calibrates the base estimators parameters and fits them. 
 
         If base_estimator = 'logistic_regression', it will find the best regularization 
@@ -151,7 +156,7 @@ class ClassifierChain:
         else:
             self.cc.fit(ds.train_x, ds.train_y)
 
-    def __initialize_order(self, n_estimators):
+    def __initialize_order(self, n_estimators: int):
         """Initializes order_ variable.
 
         Copied from 
