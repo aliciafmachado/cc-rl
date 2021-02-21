@@ -100,60 +100,6 @@ class ClassifierChain:
         else:
             return pred
 
-    def accuracy(self, ds):
-        """
-        Calculate accuracy value as described here
-        https://stackoverflow.com/questions/32239577/getting-the-accuracy-for-multi-label-prediction-in-scikit-learn
-        
-        Args:
-            ds (Dataset): Dataset to get the test data from.
-
-        Returns:
-            Accuracy measure (ACC)
-        """
-        y_pred = self.predict(ds, inference_method="greedy")
-        y_test = ds.test_y
-        acc_list = []
-        for i in range(y_test.shape[0]):
-            set_true = set( np.where(y_test[i])[0] )
-            set_pred = set( np.where(y_pred[i])[0] )
-            tmp_a = None
-            if len(set_true) == 0 and len(set_pred) == 0:
-                tmp_a = 1
-            else:
-                tmp_a = len(set_true.intersection(set_pred))/\
-                        float( len(set_true.union(set_pred)) )
-            acc_list.append(tmp_a)
-        return np.mean(acc_list)
-
-    def exact_match(self, ds):
-        """
-        Calculate exact match score
-        
-        Args:
-            ds (Dataset): Dataset to get the test data from.
-
-        Returns:
-            Exact Match score (EM)
-        """       
-        y_pred = self.predict(ds, inference_method="greedy")
-        y_test = ds.test_y
-        return accuracy_score(y_test, y_pred)
-
-    def hamming_loss(self, ds):
-        """
-        Calculate Hamming Loss
-        
-        Args:
-            ds (Dataset): Dataset to get the test data from.
-
-        Returns:
-            Hamming Loss (HL)
-        """       
-        y_pred = self.predict(ds, inference_method="greedy")
-        y_test = ds.test_y
-        return hamming_loss(y_test, y_pred)        
-
     def __optimized_fit(self, ds):
         """Calibrates the base estimators parameters and fits them. 
 

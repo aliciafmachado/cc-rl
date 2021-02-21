@@ -1,9 +1,13 @@
 import numpy as np
 from typing import List
-from cc_rl.data.Dataset import Dataset
-from cc_rl.classifier_chain.ClassifierChain import ClassifierChain
 import random
 import itertools
+from sklearn.metrics import accuracy_score, hamming_loss
+
+from cc_rl.data.Dataset import Dataset
+from cc_rl.classifier_chain.ClassifierChain import ClassifierChain
+from cc_rl.utils.multilabel_accuracy import multilabel_accuracy
+
 
 class GeneticAlgorithm:
 
@@ -134,9 +138,10 @@ class Individual:
         self.cc = ClassifierChain(order=label_order)
 
     def calculate_fitness(self, ds):
-        acc = self.cc.accuracy(ds)
-        hl = self.cc.hamming_loss(ds)
-        em = self.cc.exact_match(ds)
+        y_pred = self.cc.predict(ds, 'greedy')
+        acc = multilabel_accuracy(ds.test_y, y_pred)
+        hl = hamming_loss(ds.test_y, y_pred)
+        em = accuracy_score(ds.test_y, y_pred)
         self._fitness = (acc + em + (1 - hl)) / 3
 
     @property
