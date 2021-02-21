@@ -1,3 +1,4 @@
+import os
 import pickle
 from sklearn.multioutput import ClassifierChain as skClassifierChain
 
@@ -43,11 +44,14 @@ class ClassifierChain:
         """
 
         self.n_labels = ds.train_y.shape[1]
-        if from_scratch:
-            self.cc.fit(ds.train_x, ds.train_y)
-        else:
-            file = open(Dataset.data_path + 'trainer/cc_' + ds.name + '.pkl', 'rb')
-            self.cc = pickle.load(file)
+        if not from_scratch:
+            path = Dataset.data_path + 'trainer/cc_' + ds.name + '.pkl'
+            if os.path.isfile(path):
+                file = open(path, 'rb')
+                self.cc = pickle.load(file)
+                return
+
+        self.cc.fit(ds.train_x, ds.train_y)
 
     def predict(self, ds: Dataset, inference_method: str, return_num_nodes: bool = False,
                 **kwargs):
