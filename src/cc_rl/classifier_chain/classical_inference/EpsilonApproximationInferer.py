@@ -15,13 +15,13 @@ class EpsilonApproximationInferer(BaseInferer):
         """Default constructor.
 
         Args:
-            classifier_chain (sklearn.multioutput.ClassifierChain): Classifier chain that 
-                this inference will be used on.
+            classifier_chain (ClassifierChain): Classifier chain that this inference will
+                be used on.
             epsilon (float): Epsilon parameter for the inferer.
         """
 
         super().__init__(classifier_chain.order_)
-        self.cc = classifier_chain
+        self.cc = classifier_chain.cc
         assert(0 <= epsilon and epsilon <= 0.5)
         self.epsilon = epsilon
 

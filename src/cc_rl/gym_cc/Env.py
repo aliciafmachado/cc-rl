@@ -16,12 +16,12 @@ class Env(gym.Env):
   You only receive a reward in the end and it corresponds to the final 
   joint probability
   '''
-  def __init__(self, classifier_chain, dataset, display='none', random_seed=42):
+  def __init__(self, classifier_chain, x, display='none', random_seed=42):
     '''
     Environment constructor
     Args:
       classifier_chain : Classifier Chain used in the environment
-      dataset : the dataset that we are working with
+      x : the dataset that we are working with
       random_seed : a random_seed for reproducibility
     '''
     # Passing the seed
@@ -35,9 +35,9 @@ class Env(gym.Env):
     self.obs = None
     self.current_estimator = 0
     self.current_probability = 1
-    self.dataset = dataset
+    self.x = x
     self.cur_sample = 0
-    self.x = self.dataset.train_x[self.cur_sample]
+    self.cur_x = self.x[self.cur_sample]
 
     self.renderer = Renderer(display, classifier_chain.n_labels + 1)
 
@@ -47,7 +47,7 @@ class Env(gym.Env):
     '''
     self.current_estimator += 1
 
-    xy = np.append(self.x, self.path[:self.current_estimator])
+    xy = np.append(self.cur_x, self.path[:self.current_estimator])
 
     obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
 
@@ -95,12 +95,12 @@ class Env(gym.Env):
     self.probabilities = np.zeros((self.classifier_chain.n_labels,), dtype=float)
     self.renderer.reset()
 
-    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(self.x.reshape(1,-1)).flatten()
+    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(self.cur_x.reshape(1,-1)).flatten()
     return self.obs, self.path, self.probabilities
   
   def next_sample(self):
     self.cur_sample += 1
-    self.x = self.dataset.train_x[self.cur_sample]
+    self.cur_x = self.x[self.cur_sample]
     self.reset()
     self.renderer.next_sample()
 

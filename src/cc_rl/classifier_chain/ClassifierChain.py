@@ -8,6 +8,7 @@ from .classical_inference.BeamSearchInferer import BeamSearchInferer
 from .classical_inference.EpsilonApproximationInferer import EpsilonApproximationInferer
 from .classical_inference.ExhaustiveSearchInferer import ExhaustiveSearchInferer
 from .classical_inference.MonteCarloInferer import MonteCarloInferer
+from .RLInferer import RLInferer
 
 
 class ClassifierChain:
@@ -95,6 +96,13 @@ class ClassifierChain:
                 # Efficient Monte Carlo sampling inferer. O(d * q)
                 inferer = MonteCarloInferer(
                     self.cc, kwargs['loss'], kwargs['q'], True)
+            elif inference_method == 'qlearning':
+                batch_size = kwargs['batch_size'] if 'batch_size' in kwargs else None
+                learning_rate = kwargs['learning_rate'] if 'learning_rate' in kwargs else None
+                inferer = RLInferer(self, loss=kwargs['loss'], agent_type='qlearning',
+                                    nb_sim=kwargs['nb_sim'], nb_paths=kwargs['nb_paths'],
+                                    epochs=kwargs['epochs'], batch_size=batch_size,
+                                    learning_rate=learning_rate)
             else:
                 raise Exception('This inference method does not exist.')
 
