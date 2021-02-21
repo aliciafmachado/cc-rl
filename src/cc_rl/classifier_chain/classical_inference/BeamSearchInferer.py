@@ -20,7 +20,8 @@ class BeamSearchInferer(BaseInferer):
             b (int): b parameter for the inferer.
         """
 
-        super().__init__(classifier_chain, loss)
+        super().__init__(classifier_chain.order_, loss)
+        self.cc = classifier_chain
         assert(b >= 1)
         assert(isinstance(b, int))
         self.b = b

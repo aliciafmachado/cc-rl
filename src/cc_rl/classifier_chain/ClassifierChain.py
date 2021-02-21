@@ -1,9 +1,5 @@
-import numpy as np
-from sklearn.metrics import brier_score_loss, accuracy_score, hamming_loss
+import pickle
 from sklearn.multioutput import ClassifierChain as skClassifierChain
-from sklearn.utils import check_random_state
-from typing import Optional
-from nptyping import NDArray
 
 from cc_rl.data.Dataset import Dataset
 from cc_rl.utils.LogisticRegressionExtended import LogisticRegressionExtended
@@ -35,23 +31,23 @@ class ClassifierChain:
 
         self.cc = skClassifierChain(
             base_estimator=base_estimator, order=order, random_state=random_state)
-        self.n_labels = -1
+        self.n_labels = None
 
-    def fit(self, ds: Dataset, optimization: bool = True):
+    def fit(self, ds: Dataset, from_scratch: bool = False):
         """Fits the base estimators.
 
         Args:
             ds (Dataset): Dataset to fit the chain in.
-            optimization (bool): This activates a precalibration step in the base 
-                estimators to identify their best parameters. Only implemented if 
-                base_estimator = 'logistic_regression'.
+            from_scratch (bool, optional): If False, the model will load a pretrained
+                chain.
         """
 
         self.n_labels = ds.train_y.shape[1]
-        if optimization:
-            self.__optimized_fit(ds)
-        else:
+        if from_scratch:
             self.cc.fit(ds.train_x, ds.train_y)
+        else:
+            file = open(Dataset.data_path + 'trainer/cc_' + ds.name + '.pkl', 'rb')
+            self.cc = pickle.load(file)
 
     def predict(self, ds: Dataset, inference_method: str, return_num_nodes: bool = False,
                 **kwargs):
@@ -78,23 +74,23 @@ class ClassifierChain:
         else:
             if inference_method == 'exhaustive_search':
                 # Exhaustive search inference. O(2^d)
-                inferer = ExhaustiveSearchInferer(self.cc.order_, kwargs['loss'])
+                inferer = ExhaustiveSearchInferer(self.cc, kwargs['loss'])
             elif inference_method == 'epsilon_approximation':
                 # Epsilon approximation inference. O(d / epsilon)
                 inferer = EpsilonApproximationInferer(
-                    self.cc.order_, kwargs['epsilon'])
+                    self.cc, kwargs['epsilon'])
             elif inference_method == 'beam_search':
                 # Beam search inference. O(d * b)
                 inferer = BeamSearchInferer(
-                    self.cc.order_, kwargs['loss'], kwargs['b'])
+                    self.cc, kwargs['loss'], kwargs['b'])
             elif inference_method == 'monte_carlo':
                 # Monte Carlo sampling inferer. O(d * q)
                 inferer = MonteCarloInferer(
-                    self.cc.order_, kwargs['loss'], kwargs['q'], False)
+                    self.cc, kwargs['loss'], kwargs['q'], False)
             elif inference_method == 'efficient_monte_carlo':
                 # Efficient Monte Carlo sampling inferer. O(d * q)
                 inferer = MonteCarloInferer(
-                    self.cc.order_, kwargs['loss'], kwargs['q'], True)
+                    self.cc, kwargs['loss'], kwargs['q'], True)
             else:
                 raise Exception('This inference method does not exist.')
 
@@ -104,77 +100,3 @@ class ClassifierChain:
             return pred, num_nodes
         else:
             return pred
-
-    def __optimized_fit(self, ds: Dataset):
-        """Calibrates the base estimators parameters and fits them. 
-
-        If base_estimator = 'logistic_regression', it will find the best regularization 
-        parameter C for each individual binary regressor by perform a grid search over the
-        values [0.001, 0.01, 0.1, 1, 10, 100, 1000] optimizing brier loss. Same strategy 
-        used in MENA et al.
-
-        The fit method from sklearn needed to be rewritten because in it the estimators_ 
-        variable is reinitialized every time, so putting specific parameters for each base
-        estimator isn't possible.
-
-        Args:
-            ds (Dataset): Dataset to get the train and test data from.
-        """
-
-        n_estimators = ds.train_y.shape[1]
-        best_estimators = [None for _ in range(n_estimators)]
-        best_score = np.full((n_estimators,), np.inf)
-
-        self.__initialize_order(n_estimators)
-        x_aug = np.hstack((ds.train_x, ds.train_y[:, self.cc.order_]))
-
-        # FIXME 1: Stop using test_y here, do cv with train instead
-        # TODO: Check this out https://www.researchgate.net/publication/220320172_Trust_Region_Newton_Method_for_Logistic_Regression
-        if self.__base_estimator == 'logistic_regression':
-            for C in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
-                self.cc.estimators_ = [LogisticRegressionExtended(
-                    C=C, solver='liblinear') for _ in range(n_estimators)]
-
-                # Fitting them manually to avoid resetting estimators
-                for chain_idx, estimator in enumerate(self.cc.estimators_):
-                    y = ds.train_y[:, self.cc.order_[chain_idx]]
-                    estimator.fit(
-                        x_aug[:, :(ds.train_x.shape[1] + chain_idx)], y)
-
-                pred = self.cc.predict(ds.test_x)
-                score = np.array([brier_score_loss(ds.test_y[:, i], pred[:, i])
-                                  for i in range(n_estimators)])
-                score = score[self.cc.order_]
-
-                change = score < best_score
-                best_score[change] = score[change]
-                for i in range(len(change)):
-                    if change[i]:
-                        best_estimators[i] = self.cc.estimators_[i]
-
-            self.cc.estimators_ = best_estimators
-        else:
-            self.cc.fit(ds.train_x, ds.train_y)
-
-    def __initialize_order(self, n_estimators: int):
-        """Initializes order_ variable.
-
-        Copied from 
-        https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/multioutput.py.
-
-        Args:
-            n_estimators (int): Number of classes in the output.
-        """
-
-        self.cc.random_state = check_random_state(self.cc.random_state)
-        self.cc.order_ = self.cc.order
-        if isinstance(self.cc.order_, tuple):
-            self.order_ = np.array(self.order_)
-
-        if self.cc.order_ is None:
-            self.cc.order_ = np.array(range(n_estimators))
-        elif isinstance(self.cc.order_, str):
-            if self.cc.order_ == 'random':
-                self.cc.order_ = self.cc.random_state.permutation(n_estimators)
-        elif sorted(self.order_) != list(range(n_estimators)):
-            raise ValueError("invalid order")

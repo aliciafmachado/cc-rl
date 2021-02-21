@@ -20,7 +20,8 @@ class EpsilonApproximationInferer(BaseInferer):
             epsilon (float): Epsilon parameter for the inferer.
         """
 
-        super().__init__(classifier_chain)
+        super().__init__(classifier_chain.order_)
+        self.cc = classifier_chain
         assert(0 <= epsilon and epsilon <= 0.5)
         self.epsilon = epsilon
 
