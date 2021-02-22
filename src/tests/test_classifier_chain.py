@@ -7,7 +7,7 @@ ds = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(ds, from_scratch=True)
 
-y_pred = cc.predict(ds, 'random')
+y_pred = cc.predict(ds, 'random', n=100, loss='exact_match')
 print('Random exact_match:', zero_one_loss(ds.test_y, y_pred))
 
 y_pred = cc.predict(ds, 'greedy')

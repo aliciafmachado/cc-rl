@@ -80,7 +80,7 @@ class ClassifierChain:
         else:
             if inference_method == 'random':
                 # Completely random inference.
-                inferer = RandomInferer(self.cc)
+                inferer = RandomInferer(self.cc, kwargs['loss'], kwargs['n'])
             elif inference_method == 'exhaustive_search':
                 # Exhaustive search inference. O(2^d)
                 inferer = ExhaustiveSearchInferer(self.cc, kwargs['loss'])
