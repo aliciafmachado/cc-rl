@@ -13,8 +13,10 @@ class QModel(nn.Module):
         self.output = nn.Linear(h_size, 1)
 
     def choose_action(self, actions, probabilities, next_p):
-      values = [self.forward(actions, probabilities, next_p, torch.tensor(i, device=self.device)) for i in range(2)]
-      return np.argmax(values)
+        self.eval()
+        with torch.no_grad():
+            values = [self.forward(actions, probabilities, next_p, torch.tensor(i, device=self.device)) for i in range(2)]
+        return np.argmax(values)
     
     def forward(self, actions, probabilities, next_ps, next_actions):
       actions = actions.reshape(-1, self.tree_height-1)

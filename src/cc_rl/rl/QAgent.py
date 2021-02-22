@@ -141,9 +141,9 @@ class QAgent(Agent):
                 loss = loss_fn(predict, final_values)
 
                 # Brackprop and optimize
-                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                optimizer.zero_grad()
 
                 if verbose:
                     print('Epoch[{}/{}], Step [{}/{}], Loss: {:.4f}'.format(
