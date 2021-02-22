@@ -12,7 +12,7 @@ class LogisticRegressionExtended(LogisticRegression):
                  intercept_scaling=1, class_weight=None, random_state=None, solver='lbfgs',
                  max_iter=100, multi_class='auto', verbose=0, warm_start=False, n_jobs=None,
                  l1_ratio=None):
-        self.single_class = None
+        self.classes_ = list()
         super().__init__(penalty=penalty, dual=dual, tol=tol, C=C,
                          fit_intercept=fit_intercept, intercept_scaling=intercept_scaling,
                          class_weight=class_weight, random_state=random_state,
@@ -21,24 +21,20 @@ class LogisticRegressionExtended(LogisticRegression):
                          l1_ratio=l1_ratio)
 
     def fit(self, X, y):
-        if len(np.unique(y)) == 1:
-            self.single_class = y[0]
-        else:
+        self.classes_ = np.unique(y)
+        if len(self.classes_) > 1:
             super().fit(X, y)
 
     def predict(self, X):
-        if self.single_class is None:
+        if len(self.classes_) > 1:
             return super().predict(X)
         else:
-            return self.single_class * np.ones((len(X),))
+            return self.classes_[0] * np.ones((len(X),))
     
     def predict_proba(self, X):
-        if self.single_class is None:
+        if len(self.classes_) > 1:
             return super().predict_proba(X)
         else:
             pred = np.zeros((len(X), 2), dtype=bool)
-            if self.single_class:
-                pred[:, 1] = True
-            else:
-                pred[:, 0] = True
+            pred[:, self.classes_[0]] = True
             return pred
