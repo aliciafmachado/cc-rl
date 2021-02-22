@@ -41,11 +41,13 @@ class QAgent(Agent):
 
         self.__has_trained = True
 
-    def predict(self, return_num_nodes: bool = False, mode: str = 'best_visited'):
+    def predict(self, return_num_nodes: bool = False, return_reward: bool = False,
+                mode: str = 'best_visited'):
         """
         Predicts the best path after the training step is done.
         @param return_num_nodes: If true, will also return the total number of predictions
             ran by estimators in the classifier chain in total by the agent.
+        @param return_reward: If true, will also return the reward got in this path.
         @param mode: If 'best_visited', will get the path with the best reward found
             during training. If 'final_decision', will go through the tree one last time
             to find the path.
@@ -56,18 +58,23 @@ class QAgent(Agent):
 
         if mode == 'best_visited':
             path = self.best_path
+            reward = self.best_path_reward
         elif mode == 'final_decision':
             actions_history = []
-            self.__experience_environment_once(actions_history, [], [], [], [])
+            final_values = []
+            self.__experience_environment_once(actions_history, [], [], [], final_values)
             path = actions_history[-1]
+            reward = final_values[-1]
         else:
             raise ValueError
 
         path = ((path + 1) / 2).astype(bool)
+        returns = [path]
+        if return_reward:
+            returns.append(reward)
         if return_num_nodes:
-            return path, self.n_visited_nodes
-        else:
-            return path
+            returns.append(self.n_visited_nodes)
+        return tuple(returns)
 
     def __experience_environment(self, nb_paths: int, batch_size: int, exploring_p=0.5):
         """
