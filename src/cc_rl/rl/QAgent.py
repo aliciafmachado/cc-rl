@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
 
+
 class QAgent(Agent):
     """
     Reinforcement learning agent that uses only Q-learning to find the best tree path.
@@ -11,6 +12,7 @@ class QAgent(Agent):
     def __init__(self, environment):
         super().__init__(environment)
         self.model = QModel(environment.classifier_chain.n_labels + 1, self.device)
+        self.node_to_best_final_value = {}
 
     def train(self, nb_sim, nb_paths, epochs, batch_size=64, learning_rate=1e-3, verbose=True):
         # We do multiple simulations
@@ -41,9 +43,11 @@ class QAgent(Agent):
         for i in range(nb_paths):
             # Get current state from environment
             next_proba, action_history, proba_history = self.environment.reset()
+            nodes_current_path = []
 
             for j in range(depth):
                 # Getting the path information as torch tensors
+                nodes_current_path += [tuple(action_history)]
                 action_history = torch.tensor(action_history).float()
                 proba_history = torch.tensor(proba_history).float()
                 next_proba = torch.tensor(next_proba[0]).float()
@@ -70,8 +74,14 @@ class QAgent(Agent):
                 next_actions += [next_action]
 
             # Updating the history for the final values
-            for j in range(depth):
-                final_values += [final_value]
+            for node in nodes_current_path:
+                if node not in self.node_to_best_final_value:
+                    max_final_value = final_value
+                else:
+                    max_final_value = max(self.node_to_best_final_value[node], final_value)
+                self.node_to_best_final_value[node] = max_final_value
+                final_values += [max_final_value]
+
 
         # Updating data loader to train the network
         actions_history = torch.tensor(actions_history).float()
