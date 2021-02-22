@@ -7,22 +7,23 @@ from cc_rl.rl.QAgent import QAgent
 
 
 def get_greedy(environment):
-    next_proba, action_history, proba_history = environment.reset()
+    next_proba, action_history, _ = environment.reset()
     done = False
     while not done:
-        action = np.argmax(next_proba)
-        next_proba, action_history, proba_history, final_value, done = environment.step(
+        action = int(2 * np.argmax(next_proba) - 1)
+        next_proba, action_history, _, final_value, done = environment.step(
             action)
 
-    return action_history.astype(bool), final_value
+    return (action_history + 1).astype(bool), final_value
 
 
+sample = 10
 dataset = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(dataset)
-env = Env(cc, dataset.test_x, display="draw")
+env = Env(cc, dataset.test_x[sample].reshape(1, -1), display="none")
 agent = QAgent(env)
-agent.train(10, 2, 10, verbose=True)
+agent.train(10, 2, 10, verbose=False)
 print('Agent prediction: {}, reward: {}'.format(*agent.predict(mode='final_decision',
                                                                return_reward=True)))
 print('Greedy prediction: {}, reward: {}'.format(*get_greedy(env)))

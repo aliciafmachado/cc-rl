@@ -68,7 +68,7 @@ class QAgent(Agent):
         else:
             raise ValueError
 
-        path = ((path + 1) / 2).astype(bool)
+        path = (path + 1).astype(bool)
         returns = [path]
         if return_reward:
             returns.append(reward)
