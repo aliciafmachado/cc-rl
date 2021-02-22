@@ -6,9 +6,6 @@ from torch.utils.data.dataloader import default_collate
 from typing import List
 
 from cc_rl.gym_cc.Env import Env
-from cc_rl.rl.Agent import Agent
-from cc_rl.rl.QModel import QModel
-
 
 class QAgent(Agent):
     """
