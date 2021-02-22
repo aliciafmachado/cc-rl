@@ -1,25 +1,26 @@
+from nptyping import NDArray
 import numpy as np
+from typing import List
 
 
 class BaseInferer:
     """Base abstract class for infererence algorithms.
     """
 
-    def __init__(self, classifier_chain, loss='exact_match'):
+    def __init__(self, order: List[int], loss: str = 'exact_match'):
         """Default constructor.
 
         Args:
-            classifier_chain (sklearn.multioutput.ClassifierChain): Classifier chain that 
-                this inference will be used on.
+            order (List[int]): Order of the classifier chain estimators.
             loss (str): 'exact_match' or 'hamming', specifying which loss this prediction
                 should minimize.
         """
 
-        self.cc = classifier_chain
+        self.order = order
         assert(loss == 'exact_match' or loss == 'hamming')
         self.loss = loss
 
-    def infer(self, x):
+    def infer(self, x: NDArray[float]):
         """Infers a prediction according to the child inferer algorithm.
 
         Args:
@@ -34,7 +35,7 @@ class BaseInferer:
         pred = self.__fix_order(pred)
         return pred, n_nodes
 
-    def _infer(self, x):
+    def _infer(self, x: NDArray[float]):
         """Virtual method to do inference.
 
         Args:
@@ -46,7 +47,7 @@ class BaseInferer:
 
         raise NotImplementedError
 
-    def _new_score(self, past_score, new_proba):
+    def _new_score(self, past_score: NDArray[float], new_proba: NDArray[float]):
         """Updates the current score in the tree path. This depends on the loss function
         being used: if 'exact_match', this score is the conditional probability and if
         'hamming', it is the sum of probabilities.
@@ -65,7 +66,7 @@ class BaseInferer:
         else:
             return past_score + new_proba
 
-    def __fix_order(self, pred):
+    def __fix_order(self, pred: NDArray[float]):
         """Estimators in classifier chain are not necessarily in the label order. This
         method reorders the prediction to the label order.
 
@@ -76,6 +77,6 @@ class BaseInferer:
             np.array: Prediction in the correct order of shape (n,).
         """
 
-        inv_order = np.empty_like(self.cc.order_)
-        inv_order[self.cc.order_] = np.arange(len(self.cc.order_))
+        inv_order = np.empty_like(self.order)
+        inv_order[self.order] = np.arange(len(self.order))
         return pred[:, inv_order]

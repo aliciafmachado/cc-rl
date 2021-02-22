@@ -2,6 +2,7 @@ from abc import ABC
 import torch
 import warnings
 
+
 class Agent(ABC):
     """
     Abstract class for the reinforcement learning agent
@@ -12,18 +13,18 @@ class Agent(ABC):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         warnings.filterwarnings('default', category=UserWarning)
 
-    def train(self):
+    def train(self, *args):
         raise NotImplementedError
 
-    def train_once(self):
+    def __experience_environment(self, *args):
         raise NotImplementedError
 
-    def experience_environment(self):
+    def __train_once(self, *args):
         raise NotImplementedError
 
-    def predict(self):
+    def predict(self, *args):
         """
-        Returns the predictions for the multilabel classification problem
-        based on the environment
+        Returns the predictions for the multilabel classification problem based on the
+        environment.
         """
         raise NotImplementedError

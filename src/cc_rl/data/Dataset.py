@@ -1,11 +1,10 @@
 from io import BytesIO
 from urllib.request import urlopen, urlretrieve
 from sklearn.preprocessing import MinMaxScaler
-from skmultilearn.dataset import load_dataset, load_from_arff, available_data_sets
+from skmultilearn.dataset import load_dataset, load_from_arff
 import numpy as np
 import os
 import pandas as pd
-import pathlib
 import sys
 from zipfile import ZipFile
 
@@ -47,7 +46,7 @@ class Dataset:
         'image': 'Image',
     }
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         """Downloads the dataset given its name.
 
         Args:
@@ -98,7 +97,7 @@ class Dataset:
                                  'Labels': self.train_y.shape[1],
                                  'Cardinality': card}, index=[self.name])
 
-    def __load_skmultilearn_dataset(self, name):
+    def __load_skmultilearn_dataset(self, name: str):
         # Supress print
         orig_stdout = sys.stdout
         sys.stdout = open(os.devnull, 'w')
@@ -115,7 +114,7 @@ class Dataset:
         self.test_x = self.test_x.toarray()
         self.test_y = np.array(self.test_y.toarray(), dtype=bool)
 
-    def __load_other_dataset(self, name):
+    def __load_other_dataset(self, name: str):
         label_count, url = Dataset.other_datasets[name]
 
         if name == 'flags':
