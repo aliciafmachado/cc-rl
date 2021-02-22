@@ -8,6 +8,7 @@ from .classical_inference.BeamSearchInferer import BeamSearchInferer
 from .classical_inference.EpsilonApproximationInferer import EpsilonApproximationInferer
 from .classical_inference.ExhaustiveSearchInferer import ExhaustiveSearchInferer
 from .classical_inference.MonteCarloInferer import MonteCarloInferer
+from .classical_inference.RandomInferer import RandomInferer
 from .RLInferer import RLInferer
 
 
@@ -77,7 +78,10 @@ class ClassifierChain:
             pred, num_nodes = self.cc.predict(
                 ds.test_x), len(self.cc.estimators_)
         else:
-            if inference_method == 'exhaustive_search':
+            if inference_method == 'random':
+                # Completely random inference.
+                inferer = RandomInferer(self.cc)
+            elif inference_method == 'exhaustive_search':
                 # Exhaustive search inference. O(2^d)
                 inferer = ExhaustiveSearchInferer(self.cc, kwargs['loss'])
             elif inference_method == 'epsilon_approximation':
