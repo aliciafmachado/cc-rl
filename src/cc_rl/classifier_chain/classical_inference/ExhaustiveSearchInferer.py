@@ -12,11 +12,12 @@ class ExhaustiveSearchInferer(BaseInferer):
         """Default constructor.
 
         Args:
-            classifier_chain (sklearn.multioutput.ClassifierChain): Classifier chain that 
+            classifier_chain (sklearn.multioutput.ClassifierChain): Classifier chain that
                 this inference will be used on.
         """
 
-        super().__init__(classifier_chain, loss)
+        super().__init__(classifier_chain.order_, loss)
+        self.cc = classifier_chain
 
     def _infer(self, x):
         """Infers best prediction analyzing all paths in the tree.

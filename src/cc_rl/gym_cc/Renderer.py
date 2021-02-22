@@ -1,6 +1,9 @@
 import numpy as np
 import os
-import sys
+
+from .RendererNode import RendererNode
+
+# Pygame needs adjustment before import if in notebook
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 try:
     get_ipython()
@@ -9,186 +12,218 @@ except NameError:
     pass
 import pygame
 
+
 class Renderer:
-    constants = { 'width': -1, 'height': -1, 'margin': -1, 'font_size': 30, 'radius': 10, 'fps': 10, 'wheel_sensibility': 1.25, 'bar_margin': 10 }
-    colors = { 'background': (24, 26, 27), 'font': (211, 211, 211), 'black': (0, 0, 0), 'line': (100, 100, 0), 'highlight': (9, 255, 243), 'highlight2': (255, 43, 0) }
+    """
+    Tool to display useful environment information. It can print the path and rewards and
+    it can also draw the probability tree and show environment steps.
+    """
+    constants = {'font_size': 30, 'radius': 10, 'fps': 10, 'wheel_sensibility': 1.25,
+                 'bar_margin': 10}
+    colors = {'background': (24, 26, 27), 'font': (211, 211, 211), 'black': (0, 0, 0),
+              'line': (100, 100, 0), 'highlight': (9, 255, 243),
+              'highlight2': (255, 43, 0)}
 
-    def __init__(self, mode, n_labels):
-        assert(mode == 'none' or mode == 'draw' or mode == 'print')
+    def __init__(self, mode: str, n_labels: int):
+        """
+        Depending on mode, it will start a tree in self.root to be shown by pygame.
+        @param mode: 'draw', 'print' or 'none'.
+        @param n_labels: Number of labels in the dataset, which will be the depth of the
+            tree.
+        """
+        assert (mode == 'none' or mode == 'draw' or mode == 'print')
 
-        self.mode = mode
-        self.cur_reward = 1.
-        self.best_reward = 0.
-        self.cur_actions = []
-        self.best_actions = []
+        self.__mode = mode
+        self.__cur_reward = 1.
+        self.__best_reward = 0.
+        self.__cur_actions = []
+        self.__best_actions = []
 
         if mode == 'draw':
             # Setup pygame
             pygame.init()
             pygame.font.init()
-            
+
             # Setup display
-            self.constants['width'] = pygame.display.Info().current_w
-            self.constants['height'] = pygame.display.Info().current_h
-            self.font = pygame.font.SysFont('helvetica', self.constants['font_size'])
-            self.display = pygame.display.set_mode((self.constants['width'], self.constants['height']), pygame.RESIZABLE, 32)
-            self.display.fill(Renderer.colors['background'])
-            self.node_id_cnt = 1
+            self.__width = pygame.display.Info().current_w
+            self.__height = pygame.display.Info().current_h
+            self.__display = pygame.display.set_mode((self.__width, self.__height),
+                                                     pygame.RESIZABLE, 32)
+            self.__display.fill(Renderer.colors['background'])
+            self.__font = pygame.font.SysFont('helvetica', self.constants['font_size'])
+            self.__clock = pygame.time.Clock()
 
-            self.clock = pygame.time.Clock()
-            self.width = self.constants['width']
-            self.height = self.constants['height']
-            self.depth = n_labels
-            self.next_sample()
+            # Setup tree
+            self.__depth = n_labels
+            self.__root = RendererNode(np.array([0.5, 0]))
+            self.__cur_node = self.__root
 
-    def render(self, action, probability):
-        self.cur_reward *= probability
-        if self.mode == 'print':
-            self.__render_print(action, probability)
-        elif self.mode == 'draw':
+            # Setup view
+            self.__translation = np.zeros(2, dtype=int)
+            self.__scale = 1.
+            self.__is_panning = False
+
+    def render(self, action: int, probability: float):
+        """
+        Displays environment according to the Renderer mode.
+        @param action: Action took in the last step.
+        @param probability: Probability of the action took.
+        """
+        self.__cur_reward *= probability
+        if self.__mode == 'print':
+            self.__render_print(action)
+        elif self.__mode == 'draw':
             self.__render_draw(action, probability)
-            self.cur_depth += 1
-    
+
     def reset(self):
-        if self.cur_reward > self.best_reward and self.cur_reward != 1:
-            self.best_reward = self.cur_reward
-            self.best_actions = self.cur_actions
-        
-        if self.mode == 'print':
-            print(' Reward: {:.4f}'.format(self.cur_reward))
-        elif self.mode == 'draw':
-            self.cur_node = self.root
-            self.cur_depth = 0
-        
-        self.cur_reward = 1
-        self.cur_actions = []
-    
+        """
+        Resets the position of the current node in the tree, and updates the best path.
+        """
+        if self.__cur_reward > self.__best_reward and self.__cur_reward != 1:
+            self.__best_reward = self.__cur_reward
+            self.__best_actions = self.__cur_actions
+
+        if self.__mode == 'print':
+            print(' Reward: {:.4f}'.format(self.__cur_reward))
+        elif self.__mode == 'draw':
+            self.__cur_node = self.__root
+
+        self.__cur_reward = 1
+        self.__cur_actions = []
+
     def next_sample(self):
-        self.best_reward = 0.
-        self.best_actions = []
-        self.cur_reward = 1
-        self.cur_actions = []
-        self.node_id_cnt = 1
+        """
+        Resets everything in the renderer.
+        """
+        self.__best_reward = 0.
+        self.__best_actions = []
+        self.__cur_reward = 1
+        self.__cur_actions = []
 
-        if self.mode == 'draw':
-            self.cur_depth = 0
-            self.root = [self.node_id_cnt, 1., np.array([self.constants['width'] / 2, self.constants['radius']]), [None, None]]
-            self.node_id_cnt += 1
-            self.cur_node = self.root
-            self.translation = np.array([self.width * 0.025, self.height * 0.05], dtype=int)
-            self.scale = 0.9
-            self.panning = False
+        if self.__mode == 'draw':
+            RendererNode.id_counter = 0
+            self.__root = RendererNode(np.array([0.5, 0]))
+            self.__cur_node = self.__root
+            self.__translation = np.zeros(2, dtype=int)
+            self.__scale = 1.
+            self.__is_panning = False
 
-    def __render_print(self, action, probability):
+    @staticmethod
+    def __render_print(action: int):
         if action == -1:
             print('L', end='')
         else:
             print('R', end='')
-    
-    def __render_draw(self, action, probability):
+
+    def __render_draw(self, action: int, probability: float):
         def transform(pos):
-            return pos * self.scale + self.translation
+            f = 0.9
+            fm = (1 - f) / 2
+            return pos * self.__scale * np.array([f * self.__width, f * self.__height]) +\
+                np.array([fm * self.__width, fm * self.__height]) + self.__translation
 
-        def update_tree(action, probability):
-            def next_coords(cur_coords):
-                next_coords = np.array([0, 0], dtype=int)
-                next_coords[1] = cur_coords[1] + (self.constants['height'] - self.constants['font_size']) / self.depth
+        def update_tree():
+            a = 0 if action == -1 else 1
 
-                wstep = (self.constants['width']) / (2 ** (self.cur_depth + 2))
-                if action == 0:
-                    next_coords[0] = cur_coords[0] + wstep
-                else:
-                    next_coords[0] = cur_coords[0] - wstep
-                
-                return next_coords
+            if self.__cur_node[a] is None:
+                next_depth = self.__cur_node.depth + 1
+                coords2 = self.__cur_node.next_coords(self.__depth, next_depth, a)
+                self.__cur_node[a] = RendererNode(coords2, next_depth, probability)
 
-            action = 0 if action == -1 else 1
-
-            if self.cur_node[3][action] is None:
-                coords2 = next_coords(self.cur_node[2])
-                self.cur_node[3][action] = [self.node_id_cnt, probability, coords2, [None, None]]
-                self.node_id_cnt += 1
-
-            self.cur_reward *= probability
-            self.cur_actions.append(action)
-            self.cur_node = self.cur_node[3][action]
+            self.__cur_reward *= probability
+            self.__cur_actions.append(a)
+            self.__cur_node = self.__cur_node[a]
 
         def update_events():
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    self.panning = True
+                    self.__is_panning = True
                     self.mouse_pos = event.pos
                 elif event.type == pygame.MOUSEBUTTONUP:
-                    self.panning = False
+                    self.__is_panning = False
                 elif event.type == pygame.MOUSEMOTION:
-                    if self.panning:
+                    if self.__is_panning:
                         for i in range(2):
-                            self.translation[i] += (event.pos[i] - self.mouse_pos[i])
+                            self.__translation[i] += (event.pos[i] - self.mouse_pos[i])
                         self.mouse_pos = event.pos
                 elif event.type == pygame.MOUSEWHEEL:
                     if event.y == 1:
-                        scale2 = self.scale * self.constants['wheel_sensibility']
+                        scale2 = self.__scale * self.constants['wheel_sensibility']
                     else:
-                        scale2 = self.scale / self.constants['wheel_sensibility']
-                    p = (np.array(pygame.mouse.get_pos(), dtype=float) - self.translation) / self.scale
-                    self.translation += (p * (self.scale - scale2)).astype(int)
-                    self.scale = scale2
+                        scale2 = self.__scale / self.constants['wheel_sensibility']
+                    p = (np.array(pygame.mouse.get_pos(),
+                                  dtype=float) - self.__translation) / self.__scale
+                    self.__translation += (p * (self.__scale - scale2)).astype(int)
+                    self.__scale = scale2
                 elif event.type == pygame.QUIT:
                     exit()
                 elif event.type == pygame.WINDOWRESIZED:
-                    self.width = event.x
-                    self.height = event.y
+                    self.__width = event.x
+                    self.__height = event.y
 
         def draw():
-            self.display.fill(self.colors['background'])
+            self.__display.fill(self.colors['background'])
 
-            # Tree
-            st = []
-            st.append((self.root, 1))
+            # DFS drawing tree
+            st = [(self.__root, True)]
             while len(st) != 0:
-                node, best = st[-1]
+                node, in_best_path = st[-1]
                 st.pop()
 
-                if node[0] == self.cur_node[0]:
-                    pygame.draw.circle(self.display, Renderer.colors['highlight'], transform(node[2]), self.constants['radius'] * self.scale)
-                elif best:
-                    pygame.draw.circle(self.display, Renderer.colors['highlight2'], transform(node[2]), self.constants['radius'] * self.scale)
+                # Draw node
+                if node.id == self.__cur_node.id:
+                    color = Renderer.colors['highlight']
+                elif in_best_path:
+                    color = Renderer.colors['highlight2']
                 else:
-                    pygame.draw.circle(self.display, Renderer.colors['line'], transform(node[2]), self.constants['radius'] * self.scale)
+                    color = Renderer.colors['line']
+
+                pygame.draw.circle(self.__display, color, transform(node.coords),
+                                   self.constants['radius'] * self.__scale)
 
                 for i in range(2):
-                    if node[3][i] is not None:
-                        best2 = len(self.best_actions) == 0 or (best and self.best_actions[best-1] == i)
+                    if node[i] is not None:
+                        in_best_path2 = len(self.__best_actions) == 0 or (
+                                in_best_path and self.__best_actions[node.depth] == i)
 
-                        p1 = transform(node[2])
-                        p2 = transform(node[3][i][2])
-                        if best2:
-                            pygame.draw.line(self.display, Renderer.colors['highlight2'], p1, p2, 2)
+                        # Draw line joining nodes
+                        p1 = transform(node.coords)
+                        p2 = transform(node[i].coords)
+                        if in_best_path2:
+                            color = Renderer.colors['highlight2']
                         else:
-                            pygame.draw.line(self.display, Renderer.colors['line'], p1, p2, 2)
+                            color = Renderer.colors['line']
 
-                        text = '{:.1f}'.format(round(node[3][i][1], 1))
-                        text_blit = self.font.render(text, False, Renderer.colors['font'])
-                        self.display.blit(text_blit, (p1 + p2) / 2 - np.array([self.constants['font_size'] * 0.6, self.constants['font_size'] * 0.45]))
+                        pygame.draw.line(self.__display, color, p1, p2, 2)
 
-                        if best2:
-                            st.append((node[3][i], best+1))
+                        # Draw probability text
+                        text = '{:.1f}'.format(round(node[i].p, 1))
+                        text_blit = self.__font.render(text, False,
+                                                       Renderer.colors['font'])
+                        self.__display.blit(text_blit, (p1 + p2) / 2 - self.constants[
+                            'font_size'] * np.array([0.6, 0.45]))
+
+                        # Put node in stack
+                        if in_best_path2:
+                            st.append((node[i], True))
                         else:
-                            st.append((node[3][i], 0))
+                            st.append((node[i], False))
 
             # Bottom bar
-            text = 'Current reward: {:.2e}  Best reward: {:.2e}'.format(self.cur_reward, self.best_reward)
-            text_blit = self.font.render(text, False, Renderer.colors['font'])
-            rect = pygame.Rect((0, self.height - self.constants['font_size']), (self.width, self.height))
-            pygame.draw.rect(self.display, self.colors['background'], rect)
+            text = 'Current reward: {:.2e}  Best reward: {:.2e}'.format(
+                self.__cur_reward, self.__best_reward)
+            text_blit = self.__font.render(text, False, Renderer.colors['font'])
+            rect = pygame.Rect((0, self.__height - self.constants['font_size']),
+                               (self.__width, self.__height))
+            pygame.draw.rect(self.__display, self.colors['background'], rect)
             rect = text_blit.get_rect()
-            rect.right = self.width - self.constants['bar_margin']
-            rect.bottom = self.height - self.constants['bar_margin']
-            self.display.blit(text_blit, rect) 
+            rect.right = self.__width - self.constants['bar_margin']
+            rect.bottom = self.__height - self.constants['bar_margin']
+            self.__display.blit(text_blit, rect)
 
-        update_tree(action, probability)
+        update_tree()
         update_events()
         draw()
 
         pygame.display.update()
-        self.clock.tick(self.constants['fps'])
+        self.__clock.tick(self.constants['fps'])
