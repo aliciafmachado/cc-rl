@@ -12,14 +12,14 @@ class MonteCarloInferer(BaseInferer):
         """Default constructor.
 
         Args:
-            classifier_chain (ClassifierChain): Classifier chain that this inference will
-                be used on.
+            classifier_chain (sklearn.multioutput.ClassifierChain): Classifier chain that
+                this inference will be used on.
             q (int): Number of samples to be tried out in the inference.
             efficient (bool): If this is the efficient inference or not.
         """
 
         super().__init__(classifier_chain.order_, loss)
-        self.cc = classifier_chain.cc
+        self.cc = classifier_chain
         assert(q >= 1)
         assert(isinstance(q, int))
         assert(isinstance(efficient, bool))
