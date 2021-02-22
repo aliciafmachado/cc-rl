@@ -49,9 +49,7 @@ class Env(gym.Env):
 
     xy = np.append(self.cur_x, self.path[:self.current_estimator])
 
-    obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
-
-    return obs
+    return self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
 
   def step(self, action):
     '''
@@ -85,18 +83,46 @@ class Env(gym.Env):
       self.obs = self._next_observation()
       return self.obs, self.path, self.probabilities, 0, False
 
-  def reset(self):
+  def return_to_label(self, label):
+    '''
+    # TODO: write description
+    '''
+    self.current_estimator = label
+    self.current_probability = np.prod(self.probabilities[:label])
+    self.path = np.append(self.path[:label], 
+        np.zeros((self.classifier_chain.n_labels - label,), dtype=int))
+    self.probabilities = np.append(self.probabilities[:label],
+        np.zeros((self.classifier_chain.n_labels - label,), dtype=float))
+    # TODO: change renderer
+
+    xy = np.append(self.cur_x, self.path[:label])
+    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
+
+    return self.obs, self.path, self.probabilities
+
+  def reset(self, label=0):
     '''
     Resets the environment
+    # TODO: describe new functionality
     '''
-    self.current_probability = 1
-    self.current_estimator = 0
-    self.path = np.zeros((self.classifier_chain.n_labels,), dtype=int)
-    self.probabilities = np.zeros((self.classifier_chain.n_labels,), dtype=float)
-    self.renderer.reset()
+    self.current_estimator = label
+    self.current_probability = np.prod(self.probabilities[:label])
+    
+    # Update path and probabilities
+    self.path = np.append(self.path[:label], 
+        np.zeros((self.classifier_chain.n_labels - label,), dtype=int))
+    self.probabilities = np.append(self.probabilities[:label],
+        np.zeros((self.classifier_chain.n_labels - label,), dtype=float))
 
-    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(self.cur_x.reshape(1,-1)).flatten()
-    return self.obs, self.path, self.probabilities
+    # TODO: update renderer and make this generic enough
+    if label == 0:
+      self.renderer.reset()
+
+    # Get observation
+    xy = np.append(self.cur_x, self.path[:label])
+    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
+
+    return self.obs, self.path, self.probabilities  
   
   def next_sample(self):
     self.cur_sample += 1
