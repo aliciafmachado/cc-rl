@@ -15,13 +15,13 @@ class BeamSearchInferer(BaseInferer):
         """Default constructor.
 
         Args:
-            classifier_chain (ClassifierChain): Classifier chain that this inference will
-                be used on.
+            classifier_chain (sklearn.multioutput.ClassifierChain): Classifier chain that
+                this inference will be used on.
             b (int): b parameter for the inferer.
         """
 
         super().__init__(classifier_chain.order_, loss)
-        self.cc = classifier_chain.cc
+        self.cc = classifier_chain
         assert(b >= 1)
         assert(isinstance(b, int))
         self.b = b
