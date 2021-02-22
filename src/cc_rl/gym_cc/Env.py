@@ -103,7 +103,13 @@ class Env(gym.Env):
   def reset(self, label=0):
     '''
     Resets the environment
-    # TODO: describe new functionality
+    Args:
+      label: optional parameter, which is passed in order to return to a specific label 
+              by undoing all decisions done after this label
+    Returns:
+      Next left probability
+      The action history
+      The chosen probabilities history
     '''
     self.current_estimator = label
     self.current_probability = np.prod(self.probabilities[:label])
