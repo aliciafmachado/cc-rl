@@ -168,11 +168,7 @@ class QAgent(Agent):
             r = np.random.rand()
             if r < exploring_p:
                 # Add randomness to make agent explore more
-                r = np.random.rand()
-                if r < 0.5:
-                    next_action = -1
-                else:
-                    next_action = 1
+                next_action = np.random.randint(0, 2) * 2 - 1
             else:
                 # Choosing the next action using the agent
                 next_action = self.model.choose_action(action_history, proba_history,
