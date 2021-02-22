@@ -10,7 +10,7 @@ except NameError:
 import pygame
 
 class Renderer:
-    constants = { 'width': -1, 'height': -1, 'margin': -1, 'font_size': 30, 'radius': 10, 'fps': 10, 'wheel_sensibility': 1.25, 'bar_margin': 10 }
+    constants = { 'width': -1, 'height': -1, 'margin': -1, 'font_size': 30, 'radius': 10, 'fps': 1, 'wheel_sensibility': 1.25, 'bar_margin': 10 }
     colors = { 'background': (24, 26, 27), 'font': (211, 211, 211), 'black': (0, 0, 0), 'line': (9, 255, 243), 'highlight': (255, 43, 0), 'highlight2': (255, 43, 0) }
 
     def __init__(self, mode, n_labels):

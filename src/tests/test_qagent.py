@@ -6,7 +6,10 @@ from cc_rl.rl.QAgent import QAgent
 dataset = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(dataset)
-env = Env(cc, dataset)
+env = Env(cc, dataset, display="draw")
+
+print(env.action_space)
+
 agent = QAgent(env)
 agent.train(2, 30, 5)
 print('no way')
