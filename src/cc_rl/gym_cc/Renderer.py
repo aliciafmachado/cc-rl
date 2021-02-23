@@ -36,8 +36,7 @@ class Renderer:
         self.__mode = mode
         self.__cur_reward = 1.
         self.__best_reward = 0.
-        self.__cur_actions = []
-        self.__best_actions = []
+        self.__depth = n_labels
 
         if mode == 'draw':
             # Setup pygame
@@ -54,9 +53,10 @@ class Renderer:
             self.__clock = pygame.time.Clock()
 
             # Setup tree
-            self.__depth = n_labels
             self.__root = RendererNode(np.array([0.5, 0]))
             self.__cur_node = self.__root
+            self.__cur_actions = []
+            self.__best_actions = []
 
             # Setup view
             self.__translation = np.zeros(2, dtype=int)
@@ -81,9 +81,10 @@ class Renderer:
         it has reached the end.
         @param label: Depth of the node that the agent will be in.
         """
-        assert(label <= self.__depth - 1)
+        assert label <= self.__depth - 1
 
-        if self.__cur_node.depth == self.__depth - 1:
+        if (self.__mode == 'draw' and self.__cur_node.depth == self.__depth - 1) or \
+                (self.__mode == 'print' and label == 0):
             # Update best path
             if self.__cur_reward > self.__best_reward and self.__cur_reward != 1:
                 self.__best_reward = self.__cur_reward
@@ -92,16 +93,18 @@ class Renderer:
             if self.__mode == 'print':
                 print(' Reward: {:.4f}'.format(self.__cur_reward))
 
-        # Walk from root to label
-        self.__cur_actions = self.__cur_actions[:label]
         self.__cur_reward = 1.
 
-        self.__cur_node = self.__root
-        for i in range(label):
-            self.__cur_node = self.__cur_node[self.__cur_actions[i]]
-            self.__cur_reward *= self.__cur_node.p
+        if self.__mode == 'draw':
+            # Walk from root to label
+            self.__cur_actions = self.__cur_actions[:label]
 
-        self.__draw()
+            self.__cur_node = self.__root
+            for i in range(label):
+                self.__cur_node = self.__cur_node[self.__cur_actions[i]]
+                self.__cur_reward *= self.__cur_node.p
+
+            self.__draw()
 
     def next_sample(self):
         """
