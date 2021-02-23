@@ -5,6 +5,8 @@ import torch
 
 from cc_rl.gym_cc.Env import Env
 from cc_rl.rl.Agent import Agent
+from typing import List, Dict
+from nptyping import NDArray
 
 
 class MCTSAgent(Agent):
@@ -15,7 +17,7 @@ class MCTSAgent(Agent):
 
     def __init__(self, environment: Env,
                  c_puct: float = 0.6,
-                 mcts_passes: int = 100):
+                 mcts_passes: int = 10):
         super().__init__(environment)
         self.model = MCTSModel(environment.classifier_chain.n_labels + 1, self.device)
         self.c_puct = c_puct
@@ -28,12 +30,12 @@ class MCTSAgent(Agent):
         """
         Trains model from the environment given in the constructor, going through the tree
         nb_sim * nb_paths times.
-        @param nb_sim: Number of training loops that will be executed.
-        @param nb_paths: Number of paths explored in each step.
-        @param epochs: Number of epochs in each training step.
-        @param batch_size: Used in training.
-        @param learning_rate: Used in training.
-        @param verbose: Will print train execution if True.
+        :param: nb_sim: Number of training loops that will be executed.
+        :param: nb_paths: Number of paths explored in each step.
+        :param: epochs: Number of epochs in each training step.
+        :param: batch_size: Used in training.
+        :param: learning_rate: Used in training.
+        :param: verbose: Will print train execution if True.
         """
         # We do multiple simulations
         for sim in range(nb_sim):
@@ -42,12 +44,51 @@ class MCTSAgent(Agent):
 
         self.__has_trained = True
 
-    def __experience_environment(self, *args):
-        raise NotImplementedError
+    def __experience_environment(self, nb_paths: int, batch_size: int):
+        """
+        In this method the model is used to predict the best path for a total of
+        nb_paths paths. For each decision the model takes, the state is recorded.
+        The result is then stored in the variable self.data_loader
+        :param: nb_paths: Number of paths that must be experiences from top to bottom, i.e.
+            number of resets on the environment.
+        :param: batch_size: To be used in training.
+        """
 
-    def experience_environment_once(self):
+        # Resetting history
+        actions_history = []
+        probas_history = []
+        next_probas = []
+        improved_policy_history = []
+        final_values = []
+
+        for i in range(nb_paths):
+            self.__experience_environment_once(actions_history, probas_history,
+                                               next_probas, improved_policy_history, final_values)
+
+        # Updating data loader to train the network
+        actions_history = torch.tensor(actions_history).float()
+        probas_history = torch.tensor(probas_history).float()
+        next_probas = torch.tensor(next_probas).float()
+        improved_policy_history = torch.tensor(improved_policy_history).float()
+        final_values = torch.tensor(final_values).float()
+
+        dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
+                                                 next_probas, improved_policy_history, final_values)
+        self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                                       shuffle=True)
+
+    def __experience_environment_once(self, actions_history: List[NDArray],
+                                      probas_history: List[NDArray],
+                                      next_probas: List[float],
+                                      improved_policy_history: List[float],
+                                      final_values: List[float]):
         """
         Goes through a path until the end once using MCTS at each step
+        :param actions_history: list of action_history vectors used for training
+        :param probas_history: list of proba_history vectors used for training
+        :param next_probas: list of next_probas used for training
+        :param improved_policy_history: list of improved_policies used for training
+        :param final_values: list of final values used as oneof the objectives for trainng
         :returns:
         """
         # Each path should go until the end
@@ -56,17 +97,39 @@ class MCTSAgent(Agent):
         # Parameters used for the MCTS
         N = {} # dictionary that stores the number of times we took action a from state s
         Q = {} # action-value function
-        P = {}
+        P = {} # policy
+        final_value = None
 
+        for i in range(depth):
+            # Calculating the next policy and getting the next action
+            next_proba, action_history, proba_history, improved_policy = self.__calculate_improved_policy(i, N, Q, P)
+            action = np.random.choice([-1, 1], p=[1-improved_policy, improved_policy])
 
-        print(self.__calculate_improved_policy(0, N, Q, P))
-        print(self.__calculate_improved_policy(1, N, Q, P))
+            # Saving history
+            actions_history += [action_history]
+            probas_history += [proba_history]
+            improved_policy_history += [improved_policy]
+            next_probas += [next_proba[1]]
 
-        # TODO must return the history of actions probas, next probas adn final values and policies
-        return None
+            _, _, _, value, end = self.environment.step(action)
+            if end:
+                final_value = value
 
-    def __calculate_improved_policy(self, initial_depth, N, Q, P):
-        # TODO add comment
+        for i in range(depth):
+            final_values += [final_value]
+
+    def __calculate_improved_policy(self, initial_depth: int,
+                                    N: Dict[tuple, int],
+                                    Q: Dict[tuple, int],
+                                    P: Dict[tuple, int]):
+        """
+        Calculates the improved policy for a given initial depth
+        :param initial_depth:
+        :param N: dict to count a given action-value
+        :param Q: dict to define the action-value function
+        :param P: dict to define the policy for a given state
+        :return: variables defining the current state and the improved policy
+        """
 
         # Execute MCTS passes to calculate improved policy
         for i in range(self.mcts_passes):
@@ -81,8 +144,27 @@ class MCTSAgent(Agent):
 
         return next_proba, action_history, proba_history, improved_policy
 
-    def __MCTS(self, next_proba, action_history, proba_history, final_value, end, N, Q, P):
-        # TODO add initial comment
+    def __MCTS(self, next_proba: float,
+               action_history: NDArray,
+               proba_history: NDArray,
+               final_value: float,
+               end: bool,
+               N: Dict[tuple, int],
+               Q: Dict[tuple, int],
+               P: Dict[tuple, int]):
+        """
+        Recursive function which updates parametres in N, Q and P via MCTS starting from
+        a state defined by next_proba, action_history and proba_history
+        :param next_proba: state parameter - probability for the next choice
+        :param action_history: state parameter - action history to get to the current position
+        :param proba_history: state parameter - probability history to get to the current position
+        :param final_value: value if we reached the end of the tree
+        :param end: bool to identify if we reached the end of the tree
+        :param N: dict to count a given action-value
+        :param Q: dict to define the action-value function
+        :param P: dict to define the policy for a given state
+        :return: the value of a given action
+        """
 
         # The search reached the end
         if end:
@@ -147,33 +229,30 @@ class MCTSAgent(Agent):
     def __train_once(self, epochs: int, learning_rate: float, verbose: bool):
         """
         Fits the model with the data that is currently in self.data_loader.
-        @param epochs: Used in training.
-        @param learning_rate: Used in training.
-        @param verbose: Will print train execution if True.
+        :param epochs: Used in training.
+        :param learning_rate: Used in training.
+        :param verbose: Will print train execution if True.
         """
         # Start training
         self.model.train()
         
         loss_mse = torch.nn.MSELoss()
-
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
         for epoch in range(epochs):
             for i, data in enumerate(self.data_loader):
-                # TODO: check if it works
-                actions_history, probas_history, next_probas, \
+                # Pass the data to teh GPU if possible
+                actions_history, probas_history, next_probas, improved_policy_history, \
                 final_values = [d.to(self.device) for d in data]
 
                 # Calculate value and policies for each test case
-                out = self.model(actions_history, probas_history, next_probas).reshape(-1)
-
-                # TODO: check if this also works
-                value = out[0]
-                policies = out[1:2]
+                out = self.model(actions_history, probas_history, next_probas)
+                predicted_values = out[:, 0]
+                predicted_policies = out[:, 1]
 
                 # Apply loss functions
-                loss = loss_mse(value, final_values)
-                loss -= torch.dot(self.improved_policy_history[-2:], torch.log(policies))
+                loss = loss_mse(predicted_values, final_values)
+                loss -= torch.dot(improved_policy_history, torch.log(predicted_policies))
 
                 # Brackprop and optimize
                 loss.backward()

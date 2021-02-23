@@ -11,9 +11,9 @@ sample = 15
 dataset = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(dataset)
-env = Env(cc, dataset.test_x[sample].reshape(1, -1), display="none")
+env = Env(cc, dataset.test_x[sample].reshape(1, -1), display="draw")
 
 # Initializing agent
 agent = MCTSAgent(env)
 
-agent.experience_environment_once()
+agent.train(1, 1, 1)

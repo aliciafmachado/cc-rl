@@ -16,10 +16,10 @@ class MCTSModel(nn.Module):
     def forward(self, actions_history, probas_history, next_proba):
         """
         Takes the current tree state as input and calculates the value and the policy
-        @param actions_history: The past actions taken by the agent
-        @param probas_history: The past probas encountered before each action
-        @param next_proba: The probability (1 for right) for the next decision
-        @:returns the value and the policy in this order
+        :param actions_history: The past actions taken by the agent
+        :param probas_history: The past probas encountered before each action
+        :param next_proba: The probability (1 for right) for the next decision
+        :returns the value and the policy in this order
         """
         # Concatenating everything for the first layer
         actions_history = actions_history.reshape(-1, self.tree_height - 1)
