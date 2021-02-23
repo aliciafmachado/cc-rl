@@ -167,7 +167,7 @@ class QAgent(Agent):
             nodes_current_path += [tuple(action_history)]
             action_history = torch.tensor(action_history).float()
             proba_history = torch.tensor(proba_history).float()
-            next_proba = torch.tensor(next_proba[0]).float()
+            next_proba = torch.tensor(next_proba[1]).float()
 
             r = np.random.rand()
             if r < exploring_p:
@@ -187,7 +187,7 @@ class QAgent(Agent):
             # Adding past actions to the history
             actions_history += [action_history]
             probas_history += [proba_history]
-            next_probas += [next_proba[0]]
+            next_probas += [next_proba[1]]
             next_actions += [next_action]
 
         # Updating the history for the final values

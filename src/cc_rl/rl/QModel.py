@@ -15,7 +15,7 @@ class QModel(nn.Module):
     def choose_action(self, actions, probabilities, next_p):
         self.eval()
         with torch.no_grad():
-            values = [self.forward(actions, probabilities, next_p, torch.tensor(i, device=self.device)) for i in range(2)]
+            values = [self.forward(actions, probabilities, next_p, torch.tensor(i*2-1, device=self.device)) for i in range(2)]
         return np.argmax(values)
     
     def forward(self, actions, probabilities, next_ps, next_actions):
