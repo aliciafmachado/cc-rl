@@ -68,7 +68,9 @@ class Env(gym.Env):
     # append last observation
     self.path[self.current_estimator] = action
 
-    # Passing left probability
+    # We append the last chosen probability
+    
+    #self.probabilities[self.current_estimator] = self.obs[0]
     self.probabilities[self.current_estimator] = self.obs[(action + 1) // 2]
     self.current_probability *= self.obs[(action + 1) // 2]
 
@@ -95,6 +97,8 @@ class Env(gym.Env):
       The chosen probabilities history
     '''
     self.current_estimator = label
+
+    # self.current_probability = np.prod(np.abs(((1 + self.path) // 2 - self.probabilities))[:label])
     self.current_probability = np.prod(self.probabilities[:label])
     
     # Update path and probabilities
