@@ -72,7 +72,7 @@ class Env(gym.Env):
     self.probabilities[self.current_estimator] = self.obs[(action + 1) // 2]
     self.current_probability *= self.obs[(action + 1) // 2]
 
-    self.renderer.render(action, self.obs[(action + 1) // 2])
+    self.renderer.step(action, self.obs[(action + 1) // 2])
 
     if self.current_estimator == self.classifier_chain.n_labels - 1:
       self.current_probability *= self.obs[(action + 1) // 2]
@@ -82,23 +82,6 @@ class Env(gym.Env):
       # Take new observation
       self.obs = self._next_observation()
       return self.obs, self.path, self.probabilities, 0, False
-
-  def return_to_label(self, label):
-    '''
-    # TODO: write description
-    '''
-    self.current_estimator = label
-    self.current_probability = np.prod(self.probabilities[:label])
-    self.path = np.append(self.path[:label], 
-        np.zeros((self.classifier_chain.n_labels - label,), dtype=int))
-    self.probabilities = np.append(self.probabilities[:label],
-        np.zeros((self.classifier_chain.n_labels - label,), dtype=float))
-    # TODO: change renderer
-
-    xy = np.append(self.cur_x, self.path[:label])
-    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
-
-    return self.obs, self.path, self.probabilities
 
   def reset(self, label=0):
     '''
@@ -120,9 +103,7 @@ class Env(gym.Env):
     self.probabilities = np.append(self.probabilities[:label],
         np.zeros((self.classifier_chain.n_labels - label,), dtype=float))
 
-    # TODO: update renderer and make this generic enough
-    if label == 0:
-      self.renderer.reset()
+    self.renderer.reset(label)
 
     # Get observation
     xy = np.append(self.cur_x, self.path[:label])
@@ -135,6 +116,3 @@ class Env(gym.Env):
     self.cur_x = self.x[self.cur_sample]
     self.reset()
     self.renderer.next_sample()
-
-  def render(self, action, probability):
-    self.renderer.render(action, probability)

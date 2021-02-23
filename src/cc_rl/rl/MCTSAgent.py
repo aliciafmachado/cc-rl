@@ -20,9 +20,27 @@ class MCTSAgent(Agent):
         self.model = MCTSModel(environment.classifier_chain.n_labels + 1, self.device)
         self.c_puct = c_puct
         self.mcts_passes = mcts_passes
+        self.__has_trained = False
 
-    def train(self, *args):
-        raise NotImplementedError
+
+    def train(self, nb_sim: int, nb_paths: int, epochs: int, batch_size: int = 64,
+              learning_rate: float = 1e-3, verbose: bool = False):
+        """
+        Trains model from the environment given in the constructor, going through the tree
+        nb_sim * nb_paths times.
+        @param nb_sim: Number of training loops that will be executed.
+        @param nb_paths: Number of paths explored in each step.
+        @param epochs: Number of epochs in each training step.
+        @param batch_size: Used in training.
+        @param learning_rate: Used in training.
+        @param verbose: Will print train execution if True.
+        """
+        # We do multiple simulations
+        for sim in range(nb_sim):
+            self.__experience_environment(nb_paths, batch_size)
+            self.__train_once(epochs, learning_rate, verbose)
+
+        self.__has_trained = True
 
     def __experience_environment(self, *args):
         raise NotImplementedError
@@ -126,5 +144,43 @@ class MCTSAgent(Agent):
 
         return value
 
-    def __train_once(self, *args):
-        raise NotImplementedError
+    def __train_once(self, epochs: int, learning_rate: float, verbose: bool):
+        """
+        Fits the model with the data that is currently in self.data_loader.
+        @param epochs: Used in training.
+        @param learning_rate: Used in training.
+        @param verbose: Will print train execution if True.
+        """
+        # Start training
+        self.model.train()
+        
+        loss_mse = torch.nn.MSELoss()
+
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+
+        for epoch in range(epochs):
+            for i, data in enumerate(self.data_loader):
+                # TODO: check if it works
+                actions_history, probas_history, next_probas, \
+                final_values = [d.to(self.device) for d in data]
+
+                # Calculate value and policies for each test case
+                out = self.model(actions_history, probas_history, next_probas).reshape(-1)
+
+                # TODO: check if this also works
+                value = out[0]
+                policies = out[1:2]
+
+                # Apply loss functions
+                loss = loss_mse(value, final_values)
+                loss -= torch.dot(self.improved_policy_history[-2:], torch.log(policies))
+
+                # Brackprop and optimize
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+
+                if verbose:
+                    print('Epoch[{}/{}], Step [{}/{}], Loss: {:.4f}'.format(
+                        epoch + 1, epochs, i + 1, len(self.data_loader),
+                        loss.item() / self.data_loader.batch_size))

@@ -63,7 +63,7 @@ class Renderer:
             self.__scale = 1.
             self.__is_panning = False
 
-    def render(self, action: int, probability: float):
+    def step(self, action: int, probability: float):
         """
         Displays environment according to the Renderer mode.
         @param action: Action took in the last step.
@@ -71,25 +71,37 @@ class Renderer:
         """
         self.__cur_reward *= probability
         if self.__mode == 'print':
-            self.__render_print(action)
+            self.__step_print(action)
         elif self.__mode == 'draw':
-            self.__render_draw(action, probability)
+            self.__step_draw(action, probability)
 
-    def reset(self):
+    def reset(self, label: int = 0):
         """
-        Resets the position of the current node in the tree, and updates the best path.
+        Resets the position of the current node in the tree, and updates the best path if
+        it has reached the end.
+        @param label: Depth of the node that the agent will be in.
         """
-        if self.__cur_reward > self.__best_reward and self.__cur_reward != 1:
-            self.__best_reward = self.__cur_reward
-            self.__best_actions = self.__cur_actions
+        assert(label <= self.__depth - 1)
 
-        if self.__mode == 'print':
-            print(' Reward: {:.4f}'.format(self.__cur_reward))
-        elif self.__mode == 'draw':
-            self.__cur_node = self.__root
+        if self.__cur_node.depth == self.__depth - 1:
+            # Update best path
+            if self.__cur_reward > self.__best_reward and self.__cur_reward != 1:
+                self.__best_reward = self.__cur_reward
+                self.__best_actions = self.__cur_actions
 
-        self.__cur_reward = 1
-        self.__cur_actions = []
+            if self.__mode == 'print':
+                print(' Reward: {:.4f}'.format(self.__cur_reward))
+
+        # Walk from root to label
+        self.__cur_actions = self.__cur_actions[:label]
+        self.__cur_reward = 1.
+
+        self.__cur_node = self.__root
+        for i in range(label):
+            self.__cur_node = self.__cur_node[self.__cur_actions[i]]
+            self.__cur_reward *= self.__cur_node.p
+
+        self.__draw()
 
     def next_sample(self):
         """
@@ -109,19 +121,13 @@ class Renderer:
             self.__is_panning = False
 
     @staticmethod
-    def __render_print(action: int):
+    def __step_print(action: int):
         if action == -1:
             print('L', end='')
         else:
             print('R', end='')
 
-    def __render_draw(self, action: int, probability: float):
-        def transform(pos):
-            f = 0.9
-            fm = (1 - f) / 2
-            return pos * self.__scale * np.array([f * self.__width, f * self.__height]) +\
-                np.array([fm * self.__width, fm * self.__height]) + self.__translation
-
+    def __step_draw(self, action: int, probability: float):
         def update_tree():
             a = 0 if action == -1 else 1
 
@@ -134,6 +140,10 @@ class Renderer:
             self.__cur_actions.append(a)
             self.__cur_node = self.__cur_node[a]
 
+        update_tree()
+        self.__draw()
+
+    def __draw(self):
         def update_events():
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -160,6 +170,12 @@ class Renderer:
                 elif event.type == pygame.WINDOWRESIZED:
                     self.__width = event.x
                     self.__height = event.y
+
+        def transform(pos):
+            f = 0.9
+            fm = (1 - f) / 2
+            return pos * self.__scale * np.array([f * self.__width, f * self.__height]) +\
+                np.array([fm * self.__width, fm * self.__height]) + self.__translation
 
         def draw():
             self.__display.fill(self.colors['background'])
@@ -221,7 +237,6 @@ class Renderer:
             rect.bottom = self.__height - self.constants['bar_margin']
             self.__display.blit(text_blit, rect)
 
-        update_tree()
         update_events()
         draw()
 
