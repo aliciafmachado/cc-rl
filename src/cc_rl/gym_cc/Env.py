@@ -99,7 +99,6 @@ class Env(gym.Env):
 
     self.current_probability = np.prod(np.abs(((1 + self.path) // 2 - self.probabilities))[:label])
     #self.current_probability = np.prod(self.probabilities[:label])
-    print(self.current_probability)
     
     # Update path and probabilities
     self.path = np.append(self.path[:label], 
