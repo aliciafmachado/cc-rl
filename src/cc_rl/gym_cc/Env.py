@@ -82,7 +82,7 @@ class Env(gym.Env):
     else:
       # Take new observation
       self.obs = self._next_observation()
-      return self.obs, self.path, self.probabilities, 0, False
+      return self.obs.copy(), self.path.copy(), self.probabilities.copy(), 0, False
 
   def reset(self, label=0):
     '''
@@ -112,7 +112,7 @@ class Env(gym.Env):
     xy = np.append(self.cur_x, self.path[:label])
     self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
 
-    return self.obs, self.path, self.probabilities  
+    return self.obs.copy(), self.path.copy(), self.probabilities.copy()  
   
   def next_sample(self):
     self.cur_sample += 1
