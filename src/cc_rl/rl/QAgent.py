@@ -1,11 +1,12 @@
-from cc_rl.rl.Agent import Agent
-from cc_rl.rl.QModel import QModel
 import numpy as np
 import torch
-from torch.utils.data.dataloader import default_collate
-from typing import List
+from torch import Tensor
+from typing import List, Callable
 
 from cc_rl.gym_cc.Env import Env
+from cc_rl.rl.Agent import Agent
+from cc_rl.rl.QModel import QModel
+
 
 class QAgent(Agent):
     """
@@ -19,11 +20,10 @@ class QAgent(Agent):
         self.best_path = None
         self.best_path_reward = 0
         self.n_visited_nodes = 0
-        self.__has_trained = False
         self.node_to_best_final_value = {}
 
     def train(self, nb_sim: int, nb_paths: int, epochs: int, batch_size: int = 64,
-              learning_rate: float = 1e-3, verbose: bool = False):
+              learning_rate: float = 1e-4, verbose: bool = False):
         """
         Trains model from the environment given in the constructor, going through the tree
         nb_sim * nb_paths times.
@@ -34,12 +34,13 @@ class QAgent(Agent):
         @param learning_rate: Used in training.
         @param verbose: Will print train execution if True.
         """
-        # We do multiple simulations
+
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        loss_fn = torch.nn.MSELoss()
+
         for sim in range(nb_sim):
             self.__experience_environment(nb_paths, batch_size)
-            self.__train_once(epochs, learning_rate, verbose)
-
-        self.__has_trained = True
+            self.__train_once(epochs, optimizer, loss_fn, verbose)
 
     def predict(self, return_num_nodes: bool = False, return_reward: bool = False,
                 mode: str = 'best_visited'):
@@ -54,7 +55,6 @@ class QAgent(Agent):
         @return: (np.array) Prediction outputs of shape (n, d2).
                  (int, optional): The average number of visited nodes in the tree search.
         """
-        assert self.__has_trained
 
         if mode == 'best_visited':
             path = self.best_path
@@ -62,7 +62,8 @@ class QAgent(Agent):
         elif mode == 'final_decision':
             actions_history = []
             final_values = []
-            self.__experience_environment_once(actions_history, [], [], [], final_values)
+            self.__experience_environment_once(actions_history, [], [], [],
+                                               final_values, 0)
             path = actions_history[-1]
             reward = final_values[-1]
         else:
@@ -113,22 +114,24 @@ class QAgent(Agent):
                                                        shuffle=True)
         # collate_fn=lambda x: default_collate(x).to(self.device))
 
-    def __train_once(self, epochs: int, learning_rate: float, verbose: bool):
+    def __train_once(self, epochs: int, optimizer: torch.optim.Optimizer,
+                     loss_fn: Callable[[Tensor, Tensor], Tensor], verbose: bool):
         """
         Fits the model with the data that is currently in self.data_loader.
         @param epochs: Used in training.
-        @param learning_rate: Used in training.
+        @param optimizer: Used in training.
+        @loss_fn: Used in training.
         @param verbose: Will print train execution if True.
         """
         # Start training
         self.model.train()
-        loss_fn = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
         for epoch in range(epochs):
             for i, data in enumerate(self.data_loader):
                 actions_history, probas_history, next_probas, next_actions, \
-                final_values = [d.to(self.device) for d in data]
+                    final_values = [d.to(self.device) for d in data]
+
+                optimizer.zero_grad()
 
                 # Calculate Q value for each test case
                 predict = self.model(actions_history, probas_history, next_probas,
@@ -140,19 +143,18 @@ class QAgent(Agent):
                 # Brackprop and optimize
                 loss.backward()
                 optimizer.step()
-                optimizer.zero_grad()
 
                 if verbose:
                     print('Epoch[{}/{}], Step [{}/{}], Loss: {:.4f}'.format(
                         epoch + 1, epochs, i + 1, len(self.data_loader),
                         loss.item() / self.data_loader.batch_size))
 
-    def __experience_environment_once(self, actions_history: List[torch.Tensor],
-                                      probas_history: List[torch.tensor],
-                                      next_actions: List[torch.Tensor],
-                                      next_probas: List[torch.Tensor],
+    def __experience_environment_once(self, actions_history: List[Tensor],
+                                      probas_history: List[Tensor],
+                                      next_actions: List[Tensor],
+                                      next_probas: List[Tensor],
                                       final_values: List[float],
-                                      exploring_p: float = 0.0):
+                                      exploring_p: float):
         # Each path should go until the end
         depth = self.environment.classifier_chain.n_labels
 
@@ -167,7 +169,8 @@ class QAgent(Agent):
             nodes_current_path += [tuple(action_history)]
             action_history = torch.tensor(action_history).float()
             proba_history = torch.tensor(proba_history).float()
-            next_proba = torch.tensor(next_proba[1]).float()
+            next_proba = torch.tensor(next_proba[0]).float()
+            next_probas += [next_proba]
 
             r = np.random.rand()
             if r < exploring_p:
@@ -187,8 +190,9 @@ class QAgent(Agent):
             # Adding past actions to the history
             actions_history += [action_history]
             probas_history += [proba_history]
-            next_probas += [next_proba[1]]
             next_actions += [next_action]
+
+        # final_value *= 1000
 
         # Updating the history for the final values
         for node in nodes_current_path:
