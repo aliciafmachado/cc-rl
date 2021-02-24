@@ -263,3 +263,39 @@ class MCTSAgent(Agent):
                     print('Epoch[{}/{}], Step [{}/{}], Loss: {:.4f}'.format(
                         epoch + 1, epochs, i + 1, len(self.data_loader),
                         loss.item() / self.data_loader.batch_size))
+
+    def predict(self, return_num_nodes: bool = False, return_reward: bool = False,
+                mode: str = 'best_visited'):
+        """
+        Predicts the best path after the training step is done.
+        @param return_num_nodes: If true, will also return the total number of predictions
+            ran by estimators in the classifier chain in total by the agent.
+        @param return_reward: If true, will also return the reward got in this path.
+        @param mode: If 'best_visited', will get the path with the best reward found
+            during training. If 'final_decision', will go through the tree one last time
+            to find the path.
+        @return: (np.array) Prediction outputs of shape (n, d2).
+                 (int, optional): The average number of visited nodes in the tree search.
+        """
+        assert self.__has_trained
+
+        if mode == 'best_visited':
+            # path = self.best_path
+            # reward = self.best_path_reward
+            pass
+        elif mode == 'final_decision':
+            actions_history = []
+            final_values = []
+            self.__experience_environment_once(actions_history, [], [], [], final_values)
+            path = actions_history[-1]
+            reward = final_values[-1]
+        else:
+            raise ValueError
+
+        path = (path + 1).astype(bool)
+        returns = [path]
+        if return_reward:
+            returns.append(reward)
+        # if return_num_nodes:
+        #     returns.append(self.n_visited_nodes)
+        return tuple(returns)
