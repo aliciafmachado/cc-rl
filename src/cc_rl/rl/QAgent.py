@@ -167,10 +167,7 @@ class QAgent(Agent):
         for j in range(depth):
             # Getting the path information as torch tensors
             nodes_current_path += [tuple(action_history)]
-            action_history = torch.tensor(action_history).float()
-            proba_history = torch.tensor(proba_history).float()
-            next_proba = torch.tensor(next_proba[0]).float()
-            next_probas += [next_proba]
+            next_proba = next_proba[0]
 
             r = np.random.rand()
             if r < exploring_p:
@@ -178,19 +175,23 @@ class QAgent(Agent):
                 next_action = np.random.randint(0, 2) * 2 - 1
             else:
                 # Choosing the next action using the agent
-                next_action = self.model.choose_action(action_history, proba_history,
-                                                       next_proba)
+                next_action = self.model.choose_action(
+                    torch.tensor(action_history).float(),
+                    torch.tensor(proba_history).float(),
+                    torch.tensor(next_proba).float())
                 # Converts actions from {0, 1} to {-1, 1}
                 next_action = int(2 * next_action - 1)
-
-            next_proba, action_history, proba_history, final_value, end = \
-                self.environment.step(next_action)
-            self.n_visited_nodes += 1
 
             # Adding past actions to the history
             actions_history += [action_history]
             probas_history += [proba_history]
             next_actions += [next_action]
+            next_probas += [next_proba]
+
+            # Get next state
+            next_proba, action_history, proba_history, final_value, end = \
+                self.environment.step(next_action)
+            self.n_visited_nodes += 1
 
         # final_value *= 1000
 
