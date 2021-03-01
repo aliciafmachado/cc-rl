@@ -23,7 +23,7 @@ class QAgent(Agent):
         self.node_to_best_final_value = {}
 
     def train(self, nb_sim: int, nb_paths: int, epochs: int, batch_size: int = 64,
-              learning_rate: float = 1e-4, verbose: bool = False):
+              learning_rate: float = 1e-2, verbose: bool = False):
         """
         Trains model from the environment given in the constructor, going through the tree
         nb_sim * nb_paths times.
@@ -62,8 +62,7 @@ class QAgent(Agent):
         elif mode == 'final_decision':
             actions_history = []
             final_values = []
-            self.__experience_environment_once(actions_history, [], [], [],
-                                               final_values, 0)
+            self.__experience_environment_once(actions_history, [], final_values, 0)
             path = actions_history[-1]
             reward = final_values[-1]
         else:
@@ -92,24 +91,19 @@ class QAgent(Agent):
         # Resetting history
         actions_history = []
         probas_history = []
-        next_probas = []
-        next_actions = []
         final_values = []
 
         for i in range(nb_paths):
             self.__experience_environment_once(actions_history, probas_history,
-                                               next_actions, next_probas, final_values,
-                                               exploring_p=exploring_p)
+                                               final_values, exploring_p=exploring_p)
 
         # Updating data loader to train the network
         actions_history = torch.tensor(actions_history).float()
         probas_history = torch.tensor(probas_history).float()
-        next_actions = torch.tensor(next_actions).float()
-        next_probas = torch.tensor(next_probas).float()
         final_values = torch.tensor(final_values).float()
 
         dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
-                                                 next_actions, next_probas, final_values)
+                                                 final_values)
         self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                                        shuffle=True)
         # collate_fn=lambda x: default_collate(x).to(self.device))
@@ -128,14 +122,13 @@ class QAgent(Agent):
 
         for epoch in range(epochs):
             for i, data in enumerate(self.data_loader):
-                actions_history, probas_history, next_probas, next_actions, \
-                    final_values = [d.to(self.device) for d in data]
+                actions_history, probas_history, final_values = \
+                    [d.to(self.device) for d in data]
 
                 optimizer.zero_grad()
 
                 # Calculate Q value for each test case
-                predict = self.model(actions_history, probas_history, next_probas,
-                                     next_actions).reshape(-1)
+                predict = self.model(actions_history, probas_history).reshape(-1)
 
                 # Apply loss function
                 loss = loss_fn(predict, final_values)
@@ -151,8 +144,6 @@ class QAgent(Agent):
 
     def __experience_environment_once(self, actions_history: List[Tensor],
                                       probas_history: List[Tensor],
-                                      next_actions: List[Tensor],
-                                      next_probas: List[Tensor],
                                       final_values: List[float],
                                       exploring_p: float):
         # Each path should go until the end
@@ -165,8 +156,6 @@ class QAgent(Agent):
         nodes_current_path = []
 
         for j in range(depth):
-            # Getting the path information as torch tensors
-            nodes_current_path += [tuple(action_history)]
             next_proba = next_proba[0]
 
             r = np.random.rand()
@@ -178,20 +167,17 @@ class QAgent(Agent):
                 next_action = self.model.choose_action(
                     torch.tensor(action_history).float(),
                     torch.tensor(proba_history).float(),
-                    torch.tensor(next_proba).float())
-                # Converts actions from {0, 1} to {-1, 1}
-                next_action = int(2 * next_action - 1)
-
-            # Adding past actions to the history
-            actions_history += [action_history]
-            probas_history += [proba_history]
-            next_actions += [next_action]
-            next_probas += [next_proba]
+                    next_proba, j)
 
             # Get next state
             next_proba, action_history, proba_history, final_value, end = \
                 self.environment.step(next_action)
             self.n_visited_nodes += 1
+
+            # Adding past actions to the history
+            nodes_current_path += [tuple(action_history)]
+            actions_history += [action_history]
+            probas_history += [proba_history]
 
         # final_value *= 1000
 

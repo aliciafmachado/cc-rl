@@ -33,13 +33,13 @@ def get_random(environment):
     return avg / n
 
 
-sample = 15
+sample = 10
 dataset = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(dataset)
 env = Env(cc, dataset.test_x[sample].reshape(1, -1), display="none")
 agent = QAgent(env)
-agent.train(10, 2, 10, verbose=False)
+agent.train(30, 5, 100, verbose=False)
 
 print('Agent prediction: {}, reward: {}'.format(*agent.predict(mode='final_decision',
                                                                return_reward=True)))
