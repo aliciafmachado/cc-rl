@@ -72,7 +72,7 @@ class Env(gym.Env):
     self.path[self.current_estimator] = action
 
     # We append the last chosen probability    
-    self.probabilities[self.current_estimator] = self.obs[(action + 1) // 2]
+    self.probabilities[self.current_estimator] = self.obs[0]
 
     self.current_probability *= self.obs[(action + 1) // 2]
 
