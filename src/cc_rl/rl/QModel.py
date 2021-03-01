@@ -10,9 +10,8 @@ class QModel(nn.Module):
         self.device = device
         self.tree_height = tree_height
         h_size = 2 * (tree_height - 1)
-        self.h1 = nn.Linear(h_size, h_size)
-        # self.h3 = nn.Linear(2 * h_size, h_size)
-        self.output = nn.Linear(h_size, 1)
+        self.h1 = nn.Linear(h_size, h_size // 2)
+        self.output = nn.Linear(h_size // 2, 1)
 
         self.to(device)
 
