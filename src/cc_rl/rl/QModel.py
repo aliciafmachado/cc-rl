@@ -9,26 +9,29 @@ class QModel(nn.Module):
         super().__init__()
         self.device = device
         self.tree_height = tree_height
-        h_size = (2 * tree_height - 1) // 2
-        self.input = nn.Linear(2 * tree_height, h_size)
+        h_size = 2 * (tree_height - 1)
+        self.h1 = nn.Linear(h_size, h_size)
+        # self.h3 = nn.Linear(2 * h_size, h_size)
         self.output = nn.Linear(h_size, 1)
 
         self.to(device)
 
-    def choose_action(self, actions, probabilities, next_p):
+    def choose_action(self, actions, probabilities, next_p, depth):
         self.eval()
         with torch.no_grad():
-            values = [self.forward(
-                actions, probabilities, next_p,
-                torch.tensor(i * 2 - 1, device=self.device)) for i in range(2)]
-        return np.argmax(values)
+            probabilities[depth] = next_p
 
-    def forward(self, actions, probabilities, next_ps, next_actions):
+            values = []
+            actions[depth] = -1
+            values.append(self.forward(actions, probabilities))
+            actions[depth] = 1
+            values.append(self.forward(actions, probabilities))
+        return 2 * np.argmax(values) - 1
+
+    def forward(self, actions, probabilities):
         actions = actions.reshape(-1, self.tree_height - 1)
         probabilities = probabilities.reshape(-1, self.tree_height - 1)
-        next_ps = next_ps.reshape(-1, 1)
-        next_actions = next_actions.reshape(-1, 1)
-        inp = torch.cat((actions, probabilities, next_ps, next_actions), 1)
-        h = F.relu(self.input(inp))
+        inp = torch.cat((actions, probabilities), 1)
+        h = F.relu(self.h1(inp))
         out = self.output(h)
         return out
