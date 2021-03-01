@@ -65,19 +65,21 @@ class Env(gym.Env):
       classifier chain
     '''
 
+    if action != 1 and action != -1:
+      raise RuntimeError("Action " + str(action) + " not acceptable." + " It should be 1 or -1.")
+
     # append last observation
     self.path[self.current_estimator] = action
 
-    # We append the last chosen probability
-    
+    # We append the last chosen probability    
     self.probabilities[self.current_estimator] = self.obs[0]
-    #self.probabilities[self.current_estimator] = self.obs[(action + 1) // 2]
+
     self.current_probability *= self.obs[(action + 1) // 2]
 
     self.renderer.step(action, self.obs[(action + 1) // 2])
 
     if self.current_estimator == self.classifier_chain.n_labels - 1:
-      return self.obs, self.path, self.probabilities, self.current_probability, True 
+      return [None, None], self.path, self.probabilities, self.current_probability, True 
 
     else:
       # Take new observation
