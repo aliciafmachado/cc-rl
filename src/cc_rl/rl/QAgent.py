@@ -17,6 +17,7 @@ class QAgent(Agent):
         super().__init__(environment)
         self.model = QModel(environment.classifier_chain.n_labels + 1, self.device)
         self.data_loader = None
+        self.dataset = None
         self.best_path = None
         self.best_path_reward = 0
         self.n_visited_nodes = 0
@@ -101,6 +102,15 @@ class QAgent(Agent):
         actions_history = torch.tensor(actions_history).float()
         probas_history = torch.tensor(probas_history).float()
         final_values = torch.tensor(final_values).float()
+
+        # TODO: put a limit in the size of the dataset
+        if self.dataset == None:
+          self.dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
+                                                 final_values)
+        else:
+          new_data = torch.utils.data.TensorDataset(actions_history, probas_history,
+                                                 final_values)
+          self.dataset = torch.utils.data.ConcatDataset([self.dataset, new_data])
 
         dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
                                                  final_values)
