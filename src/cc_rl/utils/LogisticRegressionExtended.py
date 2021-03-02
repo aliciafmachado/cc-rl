@@ -35,6 +35,7 @@ class LogisticRegressionExtended(LogisticRegression):
         if len(self.classes_) > 1:
             return super().predict_proba(X)
         else:
-            pred = np.zeros((len(X), 2), dtype=bool)
-            pred[:, self.classes_[0]] = True
+            pred = np.zeros((len(X), 2), dtype=float)
+            np.put_along_axis(pred, np.array([self.classes_[0]], dtype=int).reshape(1, 1),
+                              1., axis=1)
             return pred
