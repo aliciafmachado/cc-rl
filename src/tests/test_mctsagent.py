@@ -1,7 +1,5 @@
-import torch
 import numpy as np
 
-from cc_rl.rl.MCTSModel import MCTSModel
 from cc_rl.rl.MCTSAgent import MCTSAgent
 from cc_rl.gym_cc.Env import Env
 from cc_rl.classifier_chain.ClassifierChain import ClassifierChain
@@ -34,7 +32,7 @@ def get_random(environment):
     return avg / n
 
 # Creating environment
-sample = 15
+sample = 10
 dataset = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(dataset)
@@ -43,7 +41,7 @@ env = Env(cc, dataset.test_x[sample].reshape(1, -1), display="none")
 # Initializing agent
 agent = MCTSAgent(env)
 
-agent.train(100, 2, 1, verbose=True)
+agent.train(2, 1, 10, verbose=False)
 
 print('Agent prediction: {}, reward: {}'.format(*agent.predict(mode='final_decision',
                                                                return_reward=True)))

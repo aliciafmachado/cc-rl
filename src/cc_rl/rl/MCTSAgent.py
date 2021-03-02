@@ -2,10 +2,11 @@ from cc_rl.rl.Agent import Agent
 from cc_rl.rl.MCTSModel import MCTSModel
 import numpy as np
 import torch
+from torch import Tensor
 
 from cc_rl.gym_cc.Env import Env
 from cc_rl.rl.Agent import Agent
-from typing import List, Dict
+from typing import List, Dict, Callable
 from nptyping import NDArray
 
 
@@ -20,13 +21,16 @@ class MCTSAgent(Agent):
                  mcts_passes: int = 10):
         super().__init__(environment)
         self.model = MCTSModel(environment.classifier_chain.n_labels + 1, self.device)
+        self.data_loader = None
+        # self.dataset = None
+        # self.best_path = None
+        # self.best_path_reward = 0
         self.c_puct = c_puct
         self.mcts_passes = mcts_passes
         self.__has_trained = False
 
-
     def train(self, nb_sim: int, nb_paths: int, epochs: int, batch_size: int = 64,
-              learning_rate: float = 1e-3, verbose: bool = False):
+              learning_rate: float = 1e-2, verbose: bool = False):
         """
         Trains model from the environment given in the constructor, going through the tree
         nb_sim * nb_paths times.
@@ -37,12 +41,50 @@ class MCTSAgent(Agent):
         :param: learning_rate: Used in training.
         :param: verbose: Will print train execution if True.
         """
-        # We do multiple simulations
+
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        loss_fn = torch.nn.MSELoss()
+
         for sim in range(nb_sim):
             self.__experience_environment(nb_paths, batch_size)
-            self.__train_once(epochs, learning_rate, verbose)
+            self.__train_once(epochs, optimizer, loss_fn, verbose)
 
-        self.__has_trained = True
+    def predict(self, return_num_nodes: bool = False, return_reward: bool = False,
+                mode: str = 'best_visited'):
+        """
+        Predicts the best path after the training step is done.
+        @param return_num_nodes: If true, will also return the total number of predictions
+            ran by estimators in the classifier chain in total by the agent.
+        @param return_reward: If true, will also return the reward got in this path.
+        @param mode: If 'best_visited', will get the path with the best reward found
+            during training. If 'final_decision', will go through the tree one last time
+            to find the path.
+        @return: (np.array) Prediction outputs of shape (n, d2).
+                 (int, optional): The average number of visited nodes in the tree search.
+        """
+
+        if mode == 'best_visited':
+            # path = self.best_path
+            # reward = self.best_path_reward
+            pass
+        elif mode == 'final_decision':
+            actions_history = []
+            final_values = []
+            last_action = self.__experience_environment_once(actions_history, [], [],
+                                                             final_values)
+            path = actions_history[-1]
+            path[-1] = last_action
+            reward = final_values[-1]
+        else:
+            raise ValueError
+
+        path = (path + 1).astype(bool)
+        returns = [path]
+        if return_reward:
+            returns.append(reward)
+        # if return_num_nodes:
+        #     returns.append(self.n_visited_nodes)
+        return tuple(returns)
 
     def __experience_environment(self, nb_paths: int, batch_size: int):
         """
@@ -57,29 +99,77 @@ class MCTSAgent(Agent):
         # Resetting history
         actions_history = []
         probas_history = []
-        next_probas = []
         improved_policy_history = []
         final_values = []
 
         for i in range(nb_paths):
             self.__experience_environment_once(actions_history, probas_history,
-                                               next_probas, improved_policy_history, final_values)
+                                               improved_policy_history, final_values)
 
         # Updating data loader to train the network
         actions_history = torch.tensor(actions_history).float()
         probas_history = torch.tensor(probas_history).float()
-        next_probas = torch.tensor(next_probas).float()
         improved_policy_history = torch.tensor(improved_policy_history).float()
         final_values = torch.tensor(final_values).float()
 
+        # if self.dataset == None:
+        #   self.dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
+        #                                          final_values)
+        # else:
+        #   new_data = torch.utils.data.TensorDataset(actions_history, probas_history,
+        #                                          final_values)
+        #   self.dataset = torch.utils.data.ConcatDataset([self.dataset, new_data])
+
+        print('TRAINING')
+        print('ah:', actions_history)
+        print('ph:', probas_history)
+        print('iph:', improved_policy_history)
+        print('fv:', final_values)
+
         dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
-                                                 next_probas, improved_policy_history, final_values)
+                                                 improved_policy_history, final_values)
         self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                                        shuffle=True)
 
+    def __train_once(self, epochs: int, optimizer: torch.optim.Optimizer,
+                     loss_mse: Callable[[Tensor, Tensor], Tensor], verbose: bool):
+        """
+        Fits the model with the data that is currently in self.data_loader.
+        :param epochs: Used in training.
+        :param learning_rate: Used in training.
+        :param verbose: Will print train execution if True.
+        """
+        # Start training
+        self.model.train()
+
+        for epoch in range(epochs):
+            for i, data in enumerate(self.data_loader):
+                # Pass the data to teh GPU if possible
+                actions_history, probas_history, improved_policy_history, final_values = \
+                    [d.to(self.device) for d in data]
+
+                optimizer.zero_grad()
+
+                # Calculate value and policies for each test case
+                out = self.model(actions_history, probas_history)
+                predicted_values = out[:, 0]
+                predicted_policies = out[:, 1]
+
+                # Apply loss functions
+                loss = loss_mse(predicted_values, final_values)
+                loss -= torch.dot(improved_policy_history, torch.log(predicted_policies))
+
+                # Brackprop and optimize
+                loss.backward()
+                optimizer.step()
+
+                if verbose:
+                    print('Epoch[{}/{}], Step [{}/{}], Loss: {:.4f}'.format(
+                        epoch + 1, epochs, i + 1, len(self.data_loader),
+                        loss.item() / self.data_loader.batch_size))
+
     def __experience_environment_once(self, actions_history: List[NDArray],
                                       probas_history: List[NDArray],
-                                      next_probas: List[float],
                                       improved_policy_history: List[float],
                                       final_values: List[float]):
         """
@@ -95,21 +185,21 @@ class MCTSAgent(Agent):
         depth = self.environment.classifier_chain.n_labels
 
         # Parameters used for the MCTS
-        N = {} # dictionary that stores the number of times we took action a from state s
-        Q = {} # action-value function
-        P = {} # policy
+        N = {}  # dictionary that stores the number of times we took action a from state s
+        Q = {}  # action-value function
+        P = {}  # policy
         final_value = None
 
         for i in range(depth):
             # Calculating the next policy and getting the next action
-            next_proba, action_history, proba_history, improved_policy = self.__calculate_improved_policy(i, N, Q, P)
-            action = np.random.choice([-1, 1], p=[1-improved_policy, improved_policy])
+            action_history, proba_history, improved_policy = \
+                self.__calculate_improved_policy(i, N, Q, P)
+            action = np.random.choice([-1, 1], p=[1 - improved_policy, improved_policy])
 
             # Saving history
             actions_history += [action_history]
             probas_history += [proba_history]
             improved_policy_history += [improved_policy]
-            next_probas += [next_proba[1]]
 
             _, _, _, value, end = self.environment.step(action)
             if end:
@@ -117,6 +207,8 @@ class MCTSAgent(Agent):
 
         for i in range(depth):
             final_values += [final_value]
+
+        return action
 
     def __calculate_improved_policy(self, initial_depth: int,
                                     N: Dict[tuple, int],
@@ -133,16 +225,19 @@ class MCTSAgent(Agent):
 
         # Execute MCTS passes to calculate improved policy
         for i in range(self.mcts_passes):
-            next_proba, action_history, proba_history = self.environment.reset(initial_depth)
+            next_proba, action_history, proba_history = self.environment.reset(
+                initial_depth)
 
-            self.__MCTS(next_proba, action_history, proba_history, 0, False, N, Q, P)
+            self.__MCTS(next_proba[0], action_history, proba_history, 0, False, N, Q, P,
+                        initial_depth)
 
         # Calculate improved policy
         next_proba, action_history, proba_history = self.environment.reset(initial_depth)
+        proba_history[initial_depth] = next_proba[0]
         state = tuple(action_history)
         improved_policy = N[(state, 1)] / (N[(state, -1)] + N[(state, 1)])
 
-        return next_proba, action_history, proba_history, improved_policy
+        return action_history, proba_history, improved_policy
 
     def __MCTS(self, next_proba: float,
                action_history: NDArray,
@@ -151,7 +246,8 @@ class MCTSAgent(Agent):
                end: bool,
                N: Dict[tuple, int],
                Q: Dict[tuple, int],
-               P: Dict[tuple, int]):
+               P: Dict[tuple, int],
+               cur_depth: int):
         """
         Recursive function which updates parametres in N, Q and P via MCTS starting from
         a state defined by next_proba, action_history and proba_history
@@ -172,14 +268,19 @@ class MCTSAgent(Agent):
 
         # Getting the state based on the acton history
         state = tuple(action_history)
+        print(state)
 
         # If we reach a new node we should get the value and policy from the network
         if state not in P:
-            # Use the model to predic the value and the policy
+            # Use the model to predict the value and the policy
+            proba_history[cur_depth] = next_proba
             pred = self.model(torch.tensor(action_history).float(),
-                              torch.tensor(proba_history).float(),
-                              torch.tensor(next_proba[1]).float())
+                              torch.tensor(proba_history).float())
             value, policy = pred[0][0].item(), pred[0][1].item()
+            print('PREDICTING')
+            print('ah:', action_history)
+            print('ph:', proba_history)
+            print('v, p:', value, policy)
 
             # Initialize N, Q and P
             P[state] = policy
@@ -203,9 +304,11 @@ class MCTSAgent(Agent):
 
             # P[state] represents the probability of action -1 from a given state
             if action == -1:
-                U = Q[state_action] + self.c_puct * P[state] * np.sqrt(tot_N)/(1+N[state_action])
+                U = Q[state_action] + self.c_puct * P[state] * np.sqrt(tot_N) / (
+                            1 + N[state_action])
             elif action == 1:
-                U = Q[state_action] + self.c_puct * (1-P[state]) * np.sqrt(tot_N)/(1+N[state_action])
+                U = Q[state_action] + self.c_puct * (1 - P[state]) * np.sqrt(tot_N) / (
+                            1 + N[state_action])
 
             # Choose action that maximizes U
             if U > max_U:
@@ -217,85 +320,13 @@ class MCTSAgent(Agent):
             self.environment.step(best_A)
 
         # Propagate down the search to get the value from the state below
-        value = self.__MCTS(next_proba, action_history, proba_history, final_value, end, N, Q, P)
+        value = self.__MCTS(next_proba[0], action_history, proba_history, final_value, end,
+                            N, Q, P, cur_depth + 1)
 
         # Updating Q and N
         state_action = (state, best_A)
-        Q[state_action] = (N[state_action] * Q[state_action] + value)/(N[state_action] + 1)
+        Q[state_action] = (N[state_action] * Q[state_action] + value) / (
+                    N[state_action] + 1)
         N[state_action] += 1
 
         return value
-
-    def __train_once(self, epochs: int, learning_rate: float, verbose: bool):
-        """
-        Fits the model with the data that is currently in self.data_loader.
-        :param epochs: Used in training.
-        :param learning_rate: Used in training.
-        :param verbose: Will print train execution if True.
-        """
-        # Start training
-        self.model.train()
-        
-        loss_mse = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-
-        for epoch in range(epochs):
-            for i, data in enumerate(self.data_loader):
-                # Pass the data to teh GPU if possible
-                actions_history, probas_history, next_probas, improved_policy_history, \
-                final_values = [d.to(self.device) for d in data]
-
-                # Calculate value and policies for each test case
-                out = self.model(actions_history, probas_history, next_probas)
-                predicted_values = out[:, 0]
-                predicted_policies = out[:, 1]
-
-                # Apply loss functions
-                loss = loss_mse(predicted_values, final_values)
-                loss -= torch.dot(improved_policy_history, torch.log(predicted_policies))
-
-                # Brackprop and optimize
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-
-                if verbose:
-                    print('Epoch[{}/{}], Step [{}/{}], Loss: {:.4f}'.format(
-                        epoch + 1, epochs, i + 1, len(self.data_loader),
-                        loss.item() / self.data_loader.batch_size))
-
-    def predict(self, return_num_nodes: bool = False, return_reward: bool = False,
-                mode: str = 'best_visited'):
-        """
-        Predicts the best path after the training step is done.
-        @param return_num_nodes: If true, will also return the total number of predictions
-            ran by estimators in the classifier chain in total by the agent.
-        @param return_reward: If true, will also return the reward got in this path.
-        @param mode: If 'best_visited', will get the path with the best reward found
-            during training. If 'final_decision', will go through the tree one last time
-            to find the path.
-        @return: (np.array) Prediction outputs of shape (n, d2).
-                 (int, optional): The average number of visited nodes in the tree search.
-        """
-        assert self.__has_trained
-
-        if mode == 'best_visited':
-            # path = self.best_path
-            # reward = self.best_path_reward
-            pass
-        elif mode == 'final_decision':
-            actions_history = []
-            final_values = []
-            self.__experience_environment_once(actions_history, [], [], [], final_values)
-            path = actions_history[-1]
-            reward = final_values[-1]
-        else:
-            raise ValueError
-
-        path = (path + 1).astype(bool)
-        returns = [path]
-        if return_reward:
-            returns.append(reward)
-        # if return_num_nodes:
-        #     returns.append(self.n_visited_nodes)
-        return tuple(returns)
