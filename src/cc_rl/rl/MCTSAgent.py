@@ -1,6 +1,7 @@
 from cc_rl.rl.Agent import Agent
 from cc_rl.rl.MCTSModel import MCTSModel
 import numpy as np
+import queue
 import torch
 from torch import Tensor
 
@@ -30,7 +31,7 @@ class MCTSAgent(Agent):
         self.__has_trained = False
 
     def train(self, nb_sim: int, nb_paths: int, epochs: int, batch_size: int = 64,
-              learning_rate: float = 1e-2, verbose: bool = False):
+              learning_rate: float = 1e-3, verbose: bool = False):
         """
         Trains model from the environment given in the constructor, going through the tree
         nb_sim * nb_paths times.
@@ -43,11 +44,12 @@ class MCTSAgent(Agent):
         """
 
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        loss_fn = torch.nn.MSELoss()
+        loss_mse = torch.nn.MSELoss()
+        loss_bce = torch.nn.BCELoss()
 
         for sim in range(nb_sim):
             self.__experience_environment(nb_paths, batch_size)
-            self.__train_once(epochs, optimizer, loss_fn, verbose)
+            self.__train_once(epochs, optimizer, loss_mse, loss_bce, verbose)
 
     def predict(self, return_num_nodes: bool = False, return_reward: bool = False,
                 mode: str = 'best_visited'):
@@ -120,19 +122,14 @@ class MCTSAgent(Agent):
         #                                          final_values)
         #   self.dataset = torch.utils.data.ConcatDataset([self.dataset, new_data])
 
-        print('TRAINING')
-        print('ah:', actions_history)
-        print('ph:', probas_history)
-        print('iph:', improved_policy_history)
-        print('fv:', final_values)
-
         dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
                                                  improved_policy_history, final_values)
         self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                                        shuffle=True)
 
     def __train_once(self, epochs: int, optimizer: torch.optim.Optimizer,
-                     loss_mse: Callable[[Tensor, Tensor], Tensor], verbose: bool):
+                     loss_mse: Callable[[Tensor, Tensor], Tensor],
+                     loss_bce: Callable[[Tensor, Tensor], Tensor], verbose: bool):
         """
         Fits the model with the data that is currently in self.data_loader.
         :param epochs: Used in training.
@@ -156,8 +153,8 @@ class MCTSAgent(Agent):
                 predicted_policies = out[:, 1]
 
                 # Apply loss functions
-                loss = loss_mse(predicted_values, final_values)
-                loss -= torch.dot(improved_policy_history, torch.log(predicted_policies))
+                loss = loss_mse(predicted_values, final_values) + \
+                       loss_bce(predicted_policies, improved_policy_history)
 
                 # Brackprop and optimize
                 loss.backward()
@@ -194,7 +191,7 @@ class MCTSAgent(Agent):
             # Calculating the next policy and getting the next action
             action_history, proba_history, improved_policy = \
                 self.__calculate_improved_policy(i, N, Q, P)
-            action = np.random.choice([-1, 1], p=[1 - improved_policy, improved_policy])
+            action = np.random.choice([-1, 1], p=[improved_policy, 1 - improved_policy])
 
             # Saving history
             actions_history += [action_history]
@@ -235,7 +232,7 @@ class MCTSAgent(Agent):
         next_proba, action_history, proba_history = self.environment.reset(initial_depth)
         proba_history[initial_depth] = next_proba[0]
         state = tuple(action_history)
-        improved_policy = N[(state, 1)] / (N[(state, -1)] + N[(state, 1)])
+        improved_policy = N[(state, -1)] / (N[(state, -1)] + N[(state, 1)])
 
         return action_history, proba_history, improved_policy
 
@@ -268,19 +265,15 @@ class MCTSAgent(Agent):
 
         # Getting the state based on the acton history
         state = tuple(action_history)
-        print(state)
 
         # If we reach a new node we should get the value and policy from the network
         if state not in P:
             # Use the model to predict the value and the policy
             proba_history[cur_depth] = next_proba
+            self.model.eval()
             pred = self.model(torch.tensor(action_history).float(),
                               torch.tensor(proba_history).float())
             value, policy = pred[0][0].item(), pred[0][1].item()
-            print('PREDICTING')
-            print('ah:', action_history)
-            print('ph:', proba_history)
-            print('v, p:', value, policy)
 
             # Initialize N, Q and P
             P[state] = policy
