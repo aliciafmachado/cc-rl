@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import Tensor
+from torch.utils import data
 from typing import List, Callable
 
 from cc_rl.gym_cc.Env import Env
@@ -104,18 +105,13 @@ class QAgent(Agent):
         final_values = torch.tensor(final_values).float()
 
         # TODO: put a limit in the size of the dataset
-        if self.dataset == None:
-          self.dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
-                                                 final_values)
+        new_data = data.TensorDataset(actions_history, probas_history, final_values)
+        if self.dataset is None:
+            self.dataset = new_data
         else:
-          new_data = torch.utils.data.TensorDataset(actions_history, probas_history,
-                                                 final_values)
-          self.dataset = torch.utils.data.ConcatDataset([self.dataset, new_data])
-
-        dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
-                                                 final_values)
-        self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
-                                                       shuffle=True)
+            self.dataset = data.ConcatDataset([self.dataset, new_data])
+        self.data_loader = data.DataLoader(self.dataset, batch_size=batch_size,
+                                           shuffle=True)
 
     def __train_once(self, epochs: int, optimizer: torch.optim.Optimizer,
                      loss_fn: Callable[[Tensor, Tensor], Tensor], verbose: bool):
