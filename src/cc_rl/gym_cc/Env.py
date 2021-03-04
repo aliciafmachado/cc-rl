@@ -41,6 +41,7 @@ class Env(gym.Env):
     self.x = x
     self.cur_sample = 0
     self.cur_x = self.x[self.cur_sample]
+    self.observation_dict = {}
 
     self.renderer = Renderer(display, classifier_chain.n_labels + 1, loss=loss)
 
@@ -50,9 +51,14 @@ class Env(gym.Env):
     '''
     self.current_estimator += 1
 
-    xy = np.append(self.cur_x, self.path[:self.current_estimator])
-
-    return self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
+    path_tuple = tuple(self.path)
+    if path_tuple in self.observation_dict:
+      return self.observation_dict[path_tuple]
+    else:
+      xy = np.append(self.cur_x, self.path[:self.current_estimator])
+      obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
+      self.observation_dict[path_tuple] = obs
+      return obs
 
   def step(self, action):
     '''

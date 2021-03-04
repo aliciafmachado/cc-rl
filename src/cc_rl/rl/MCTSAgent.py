@@ -271,8 +271,8 @@ class MCTSAgent(Agent):
             # Use the model to predict the value and the policy
             proba_history[cur_depth] = next_proba
             self.model.eval()
-            pred = self.model(torch.tensor(action_history).float(),
-                              torch.tensor(proba_history).float())
+            pred = self.model(torch.tensor(action_history).float().to(self.device),
+                              torch.tensor(proba_history).float().to(self.device))
             value, policy = pred[0][0].item(), pred[0][1].item()
 
             # Initialize N, Q and P
