@@ -17,8 +17,8 @@ class QModel(nn.Module):
 
     def choose_action(self, actions, probabilities, next_p, depth):
         self.eval()
-        actions = actions.reshape(1, -1)
-        probabilities = probabilities.reshape(1, -1)
+        actions = actions.reshape(1, -1).to(self.device)
+        probabilities = probabilities.reshape(1, -1).to(self.device)
         with torch.no_grad():
             probabilities[0, depth] = next_p
 
