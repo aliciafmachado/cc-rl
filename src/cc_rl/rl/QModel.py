@@ -17,19 +17,19 @@ class QModel(nn.Module):
 
     def choose_action(self, actions, probabilities, next_p, depth):
         self.eval()
+        actions = actions.reshape(1, -1)
+        probabilities = probabilities.reshape(1, -1)
         with torch.no_grad():
-            probabilities[depth] = next_p
+            probabilities[0, depth] = next_p
 
             values = []
-            actions[depth] = -1
+            actions[0, depth] = -1
             values.append(self.forward(actions, probabilities))
-            actions[depth] = 1
+            actions[0, depth] = 1
             values.append(self.forward(actions, probabilities))
         return 2 * np.argmax(values) - 1
 
     def forward(self, actions, probabilities):
-        actions = actions.reshape(-1, self.tree_height - 1)
-        probabilities = probabilities.reshape(-1, self.tree_height - 1)
         inp = torch.cat((actions, probabilities), 1)
         h = F.relu(self.h1(inp))
         out = self.output(h)

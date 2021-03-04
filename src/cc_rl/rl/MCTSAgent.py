@@ -225,12 +225,12 @@ class MCTSAgent(Agent):
             next_proba, action_history, proba_history = self.environment.reset(
                 initial_depth)
 
-            self.__MCTS(next_proba[0], action_history, proba_history, 0, False, N, Q, P,
+            self.__MCTS(next_proba, action_history, proba_history, 0, False, N, Q, P,
                         initial_depth)
 
         # Calculate improved policy
         next_proba, action_history, proba_history = self.environment.reset(initial_depth)
-        proba_history[initial_depth] = next_proba[0]
+        proba_history[initial_depth] = next_proba
         state = tuple(action_history)
         improved_policy = N[(state, -1)] / (N[(state, -1)] + N[(state, 1)])
 
@@ -313,7 +313,7 @@ class MCTSAgent(Agent):
             self.environment.step(best_A)
 
         # Propagate down the search to get the value from the state below
-        value = self.__MCTS(next_proba[0], action_history, proba_history, final_value, end,
+        value = self.__MCTS(next_proba, action_history, proba_history, final_value, end,
                             N, Q, P, cur_depth + 1)
 
         # Updating Q and N

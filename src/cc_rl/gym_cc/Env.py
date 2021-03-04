@@ -16,18 +16,21 @@ class Env(gym.Env):
   You only receive a reward in the end and it corresponds to the final 
   joint probability
   '''
-  def __init__(self, classifier_chain, x, display='none', random_seed=42):
+  def __init__(self, classifier_chain, x, loss='exact_match', display=None,
+               random_seed=42):
     '''
     Environment constructor
     Args:
       classifier_chain : Classifier Chain used in the environment
       x : the dataset that we are working with
+      loss : 'exact_match' or 'hamming'
       random_seed : a random_seed for reproducibility
     '''
     # Passing the seed
     np.random.seed(random_seed)
 
     self.classifier_chain = classifier_chain
+    self.loss = loss
     self.action_space = [-1, 1]
 
     self.path = np.zeros((classifier_chain.n_labels,), dtype=int)
@@ -39,7 +42,7 @@ class Env(gym.Env):
     self.cur_sample = 0
     self.cur_x = self.x[self.cur_sample]
 
-    self.renderer = Renderer(display, classifier_chain.n_labels + 1)
+    self.renderer = Renderer(display, classifier_chain.n_labels + 1, loss=loss)
 
   def _next_observation(self):
     '''
@@ -74,17 +77,21 @@ class Env(gym.Env):
     # We append the last chosen probability    
     self.probabilities[self.current_estimator] = self.obs[0]
 
-    self.current_probability *= self.obs[(action + 1) // 2]
-
-    self.renderer.step(action, self.obs[(action + 1) // 2])
+    prob = self.obs[(action + 1) // 2]
+    if self.loss == 'exact_match':
+      self.current_probability += np.log(prob)
+    else:
+      self.current_probability += prob
+    self.renderer.step(action, prob)
 
     if self.current_estimator == self.classifier_chain.n_labels - 1:
-      return [None, None], self.path, self.probabilities, self.current_probability, True 
+      return None, self.path.copy(), self.probabilities.copy(), \
+             self.current_probability, True
 
     else:
       # Take new observation
       self.obs = self._next_observation()
-      return self.obs.copy(), self.path.copy(), self.probabilities.copy(), 0, False
+      return self.obs[0], self.path.copy(), self.probabilities.copy(), 0, False
 
   def reset(self, label=0):
     '''
@@ -97,24 +104,25 @@ class Env(gym.Env):
       The action history
       The chosen probabilities history
     '''
-    self.current_estimator = label
 
-    self.current_probability = np.prod(np.abs(((1 + self.path) // 2 - self.probabilities))[:label])
+    probs = np.abs(((1 + self.path) // 2 - self.probabilities))[:label]
+    if self.loss == 'exact_match':
+      self.current_probability = np.sum(np.log(probs))
+    else:
+      self.current_probability = np.sum(probs)
     #self.current_probability = np.prod(self.probabilities[:label])
     
     # Update path and probabilities
-    self.path = np.append(self.path[:label], 
-        np.zeros((self.classifier_chain.n_labels - label,), dtype=int))
-    self.probabilities = np.append(self.probabilities[:label],
-        np.zeros((self.classifier_chain.n_labels - label,), dtype=float))
+    self.path[label:] = 0
+    self.probabilities[label:] = 0
 
     self.renderer.reset(label)
 
     # Get observation
-    xy = np.append(self.cur_x, self.path[:label])
-    self.obs = self.classifier_chain.cc.estimators_[self.current_estimator].predict_proba(xy.reshape(1,-1)).flatten()
+    self.current_estimator = label - 1
+    self.obs = self._next_observation()
 
-    return self.obs.copy(), self.path.copy(), self.probabilities.copy()  
+    return self.obs[0], self.path.copy(), self.probabilities.copy()
   
   def next_sample(self):
     self.cur_sample += 1

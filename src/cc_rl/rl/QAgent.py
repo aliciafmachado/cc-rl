@@ -116,7 +116,6 @@ class QAgent(Agent):
                                                  final_values)
         self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                                        shuffle=True)
-        # collate_fn=lambda x: default_collate(x).to(self.device))
 
     def __train_once(self, epochs: int, optimizer: torch.optim.Optimizer,
                      loss_fn: Callable[[Tensor, Tensor], Tensor], verbose: bool):
@@ -138,7 +137,7 @@ class QAgent(Agent):
                 optimizer.zero_grad()
 
                 # Calculate Q value for each test case
-                predict = self.model(actions_history, probas_history).reshape(-1)
+                predict = self.model(actions_history, probas_history).flatten()
 
                 # Apply loss function
                 loss = loss_fn(predict, final_values)
@@ -166,8 +165,6 @@ class QAgent(Agent):
         nodes_current_path = []
 
         for j in range(depth):
-            next_proba = next_proba[0]
-
             r = np.random.rand()
             if r < exploring_p:
                 # Add randomness to make agent explore more
@@ -188,8 +185,6 @@ class QAgent(Agent):
             nodes_current_path += [tuple(action_history)]
             actions_history += [action_history]
             probas_history += [proba_history]
-
-        # final_value *= 1000
 
         # Updating the history for the final values
         for node in nodes_current_path:

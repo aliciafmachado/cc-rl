@@ -5,7 +5,7 @@ from cc_rl.gym_cc.Env import Env
 dataset = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(dataset)
-env = Env(cc, dataset.test_x, display='none')
+env = Env(cc, dataset.test_x, display=None)
 print(env.reset())
 steps = [1, 1, -1, 1, 1]
 for i in range(5):

@@ -24,19 +24,21 @@ class Renderer:
               'line': (100, 100, 0), 'highlight': (9, 255, 243),
               'highlight2': (255, 43, 0)}
 
-    def __init__(self, mode: str, n_labels: int):
+    def __init__(self, mode: str, n_labels: int, loss='exact_match'):
         """
         Depending on mode, it will start a tree in self.root to be shown by pygame.
-        @param mode: 'draw', 'print' or 'none'.
+        @param mode: 'draw', 'print' or None.
         @param n_labels: Number of labels in the dataset, which will be the depth of the
             tree.
+        @param loss: 'exact_match' or 'hamming'.
         """
-        assert (mode == 'none' or mode == 'draw' or mode == 'print')
+        assert (mode is None or mode == 'draw' or mode == 'print')
 
         self.__mode = mode
-        self.__cur_reward = 1.
-        self.__best_reward = 0.
+        self.__cur_reward = 0.
+        self.__best_reward = -np.inf
         self.__depth = n_labels
+        self.__loss = loss
 
         if mode == 'draw':
             # Setup pygame
@@ -69,7 +71,14 @@ class Renderer:
         @param action: Action took in the last step.
         @param probability: Probability of the action took.
         """
-        self.__cur_reward *= probability
+        if self.__mode is None:
+            return
+
+        if self.__loss == 'exact_match':
+            self.__cur_reward += np.log(probability)
+        else:
+            self.__cur_reward += probability
+
         if self.__mode == 'print':
             self.__step_print(action)
         elif self.__mode == 'draw':
@@ -86,14 +95,14 @@ class Renderer:
         if (self.__mode == 'draw' and self.__cur_node.depth == self.__depth - 1) or \
                 (self.__mode == 'print' and label == 0):
             # Update best path
-            if self.__cur_reward > self.__best_reward and self.__cur_reward != 1:
+            if self.__cur_reward > self.__best_reward and self.__cur_reward != 0:
                 self.__best_reward = self.__cur_reward
                 self.__best_actions = self.__cur_actions
 
             if self.__mode == 'print':
                 print(' Reward: {:.4f}'.format(self.__cur_reward))
 
-        self.__cur_reward = 1.
+        self.__cur_reward = 0.
 
         if self.__mode == 'draw':
             # Walk from root to label

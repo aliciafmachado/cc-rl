@@ -10,7 +10,7 @@ def get_greedy(environment):
     next_proba, action_history, _ = environment.reset()
     done = False
     while not done:
-        action = int(2 * np.argmax(next_proba) - 1)
+        action = int(2 * (next_proba < 0.5) - 1)
         next_proba, action_history, _, final_value, done = environment.step(
             action)
 
@@ -37,9 +37,9 @@ sample = 10
 dataset = Dataset('emotions')
 cc = ClassifierChain()
 cc.fit(dataset)
-env = Env(cc, dataset.test_x[sample].reshape(1, -1), display="none")
+env = Env(cc, dataset.test_x[sample].reshape(1, -1), display=None)
 agent = QAgent(env)
-agent.train(30, 5, 100, verbose=False)
+agent.train(30, 5, 10, verbose=False)
 
 print('Agent prediction: {}, reward: {}'.format(*agent.predict(mode='final_decision',
                                                                return_reward=True)))
