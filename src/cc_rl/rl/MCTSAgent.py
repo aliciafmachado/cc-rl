@@ -1,14 +1,13 @@
-from cc_rl.rl.Agent import Agent
-from cc_rl.rl.MCTSModel import MCTSModel
 import numpy as np
-import queue
 import torch
+from torch.utils import data
 from torch import Tensor
+from typing import List, Dict, Callable
+from nptyping import NDArray
 
 from cc_rl.gym_cc.Env import Env
 from cc_rl.rl.Agent import Agent
-from typing import List, Dict, Callable
-from nptyping import NDArray
+from cc_rl.rl.MCTSModel import MCTSModel
 
 
 class MCTSAgent(Agent):
@@ -23,9 +22,10 @@ class MCTSAgent(Agent):
         super().__init__(environment)
         self.model = MCTSModel(environment.classifier_chain.n_labels + 1, self.device)
         self.data_loader = None
-        # self.dataset = None
-        # self.best_path = None
-        # self.best_path_reward = 0
+        self.dataset = None
+        self.best_path = None
+        self.best_path_reward = -np.inf
+        self.n_visited_nodes = 0
         self.c_puct = c_puct
         self.mcts_passes = mcts_passes
         self.__has_trained = False
@@ -46,6 +46,7 @@ class MCTSAgent(Agent):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         loss_mse = torch.nn.MSELoss()
         loss_bce = torch.nn.BCELoss()
+        self.n_visited_nodes = 0
 
         for sim in range(nb_sim):
             self.__experience_environment(nb_paths, batch_size)
@@ -66,9 +67,8 @@ class MCTSAgent(Agent):
         """
 
         if mode == 'best_visited':
-            # path = self.best_path
-            # reward = self.best_path_reward
-            pass
+            path = self.best_path
+            reward = self.best_path_reward
         elif mode == 'final_decision':
             actions_history = []
             final_values = []
@@ -84,8 +84,8 @@ class MCTSAgent(Agent):
         returns = [path]
         if return_reward:
             returns.append(reward)
-        # if return_num_nodes:
-        #     returns.append(self.n_visited_nodes)
+        if return_num_nodes:
+            returns.append(self.n_visited_nodes)
         return tuple(returns)
 
     def __experience_environment(self, nb_paths: int, batch_size: int):
@@ -114,18 +114,15 @@ class MCTSAgent(Agent):
         improved_policy_history = torch.tensor(improved_policy_history).float()
         final_values = torch.tensor(final_values).float()
 
-        # if self.dataset == None:
-        #   self.dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
-        #                                          final_values)
-        # else:
-        #   new_data = torch.utils.data.TensorDataset(actions_history, probas_history,
-        #                                          final_values)
-        #   self.dataset = torch.utils.data.ConcatDataset([self.dataset, new_data])
-
-        dataset = torch.utils.data.TensorDataset(actions_history, probas_history,
-                                                 improved_policy_history, final_values)
-        self.data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
-                                                       shuffle=True)
+        # TODO: put a limit in the size of the dataset
+        new_data = data.TensorDataset(actions_history, probas_history,
+                                      improved_policy_history, final_values)
+        if self.dataset is None:
+            self.dataset = new_data
+        else:
+            self.dataset = data.ConcatDataset([self.dataset, new_data])
+        self.data_loader = data.DataLoader(self.dataset, batch_size=batch_size,
+                                           shuffle=True)
 
     def __train_once(self, epochs: int, optimizer: torch.optim.Optimizer,
                      loss_mse: Callable[[Tensor, Tensor], Tensor],
@@ -199,6 +196,7 @@ class MCTSAgent(Agent):
             improved_policy_history += [improved_policy]
 
             _, _, _, value, end = self.environment.step(action)
+            self.n_visited_nodes += 1
             if end:
                 final_value = value
 
@@ -261,6 +259,9 @@ class MCTSAgent(Agent):
 
         # The search reached the end
         if end:
+            if final_value > self.best_path_reward:
+                self.best_path_reward = final_value
+                self.best_path = action_history
             return final_value
 
         # Getting the state based on the acton history
@@ -311,6 +312,7 @@ class MCTSAgent(Agent):
         # Get the next state from the environment
         next_proba, action_history, proba_history, final_value, end = \
             self.environment.step(best_A)
+        self.n_visited_nodes += 1
 
         # Propagate down the search to get the value from the state below
         value = self.__MCTS(next_proba, action_history, proba_history, final_value, end,

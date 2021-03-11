@@ -20,7 +20,7 @@ class QAgent(Agent):
         self.data_loader = None
         self.dataset = None
         self.best_path = None
-        self.best_path_reward = 0
+        self.best_path_reward = -np.inf
         self.n_visited_nodes = 0
         self.node_to_best_final_value = {}
 
@@ -39,6 +39,7 @@ class QAgent(Agent):
 
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         loss_fn = torch.nn.MSELoss()
+        self.n_visited_nodes = 0
 
         for sim in range(nb_sim):
             self.__experience_environment(nb_paths, batch_size)
