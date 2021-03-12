@@ -1,17 +1,21 @@
-from sklearn.metrics import zero_one_loss
+from sklearn.metrics import zero_one_loss, hamming_loss
 
 from cc_rl.classifier_chain.ClassifierChain import ClassifierChain
 from cc_rl.data.Dataset import Dataset
 
 ds = Dataset('emotions')
 cc = ClassifierChain()
-cc.fit(ds, from_scratch=True)
+cc.fit(ds)
 
-y_pred = cc.predict(ds, 'random', n=100, loss='exact_match')
+y_pred, reward = cc.predict(ds, 'random', loss='exact_match', n=100, return_reward=True)
 print('Random exact_match:', zero_one_loss(ds.test_y, y_pred))
+print('Random reward:', reward)
 
-y_pred = cc.predict(ds, 'greedy')
+y_pred, reward = cc.predict(ds, 'greedy', loss='exact_match', return_reward=True)
 print('Greedy exact_match:', zero_one_loss(ds.test_y, y_pred))
+print('Greedy reward:', reward)
 
-y_pred = cc.predict(ds, 'qlearning', loss='exact_match', nb_sim=20, nb_paths=5, epochs=5)
+y_pred, reward = cc.predict(ds, 'qlearning', loss='exact_match', nb_sim=20, nb_paths=5,
+                            epochs=5, return_reward=True)
 print('RL exact_match:', zero_one_loss(ds.test_y, y_pred))
+print('RL reward:', reward)

@@ -11,18 +11,19 @@ class EpsilonApproximationInferer(BaseInferer):
     search if epsilon = 0.
     """
 
-    def __init__(self, classifier_chain, epsilon):
+    def __init__(self, classifier_chain, loss, epsilon):
         """Default constructor.
 
         Args:
             classifier_chain (ClassifierChain): Classifier chain that this inference will
                 be used on.
+            loss (str): 'exact_match' or 'hamming'.
             epsilon (float): Epsilon parameter for the inferer.
         """
 
-        super().__init__(classifier_chain.order_)
+        super().__init__(classifier_chain, loss)
         self.cc = classifier_chain
-        assert(0 <= epsilon and epsilon <= 0.5)
+        assert 0 <= epsilon <= 0.5
         self.epsilon = epsilon
 
     def _infer(self, x):

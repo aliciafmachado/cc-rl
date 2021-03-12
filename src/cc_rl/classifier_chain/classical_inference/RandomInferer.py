@@ -11,7 +11,7 @@ class RandomInferer(BaseInferer):
     """
 
     def __init__(self, classifier_chain: ClassifierChain, loss: str, n: int):
-        super().__init__(classifier_chain.order_, loss)
+        super().__init__(classifier_chain, loss)
         self.cc = classifier_chain
         self.__n = n
 

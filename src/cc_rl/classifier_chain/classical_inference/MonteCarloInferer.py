@@ -18,7 +18,7 @@ class MonteCarloInferer(BaseInferer):
             efficient (bool): If this is the efficient inference or not.
         """
 
-        super().__init__(classifier_chain.order_, loss)
+        super().__init__(classifier_chain, loss)
         self.cc = classifier_chain
         assert(q >= 1)
         assert(isinstance(q, int))

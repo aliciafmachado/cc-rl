@@ -1,3 +1,5 @@
+from sklearn.multioutput import ClassifierChain
+
 from nptyping import NDArray
 import numpy as np
 from typing import List
@@ -7,7 +9,7 @@ class BaseInferer:
     """Base abstract class for infererence algorithms.
     """
 
-    def __init__(self, order: List[int], loss: str = 'exact_match'):
+    def __init__(self, cc: ClassifierChain, loss: str = 'exact_match'):
         """Default constructor.
 
         Args:
@@ -16,7 +18,7 @@ class BaseInferer:
                 should minimize.
         """
 
-        self.order = order
+        self._cc = cc
         assert(loss == 'exact_match' or loss == 'hamming')
         self.loss = loss
 
@@ -32,8 +34,9 @@ class BaseInferer:
         """
 
         pred, n_nodes = self._infer(x)
+        reward = self.__calculate_reward(x, pred)
         pred = self.__fix_order(pred)
-        return pred, n_nodes
+        return pred, n_nodes, reward
 
     def _infer(self, x: NDArray[float]):
         """Virtual method to do inference.
@@ -66,6 +69,30 @@ class BaseInferer:
         else:
             return past_score + new_proba
 
+    def __calculate_reward(self, x: NDArray[float], pred: NDArray[float]):
+        """Calculates the final reward given a path of predictions.
+
+        Args:
+            x (np.array): Prediction data of shape (n, d1).
+            pred (np.array): Predicted labels of shape (n, d2).
+
+        Returns:
+            reward (float): Final average reward of that prediction.
+        """
+        if self.loss == 'exact_match':
+            reward = np.ones((len(x),), dtype=float)
+        else:
+            reward = np.zeros((len(x),), dtype=float)
+
+        for i in range(len(self._cc.estimators_)):
+            x_aug = np.hstack((x, pred[:, :i]))
+            proba = self._cc.estimators_[i].predict_proba(x_aug)
+            reward = self._new_score(
+                reward,
+                np.take_along_axis(
+                    proba, pred[:, i].astype(int).reshape(-1, 1), axis=1).flatten())
+        return reward.mean()
+
     def __fix_order(self, pred: NDArray[float]):
         """Estimators in classifier chain are not necessarily in the label order. This
         method reorders the prediction to the label order.
@@ -77,6 +104,6 @@ class BaseInferer:
             np.array: Prediction in the correct order of shape (n,).
         """
 
-        inv_order = np.empty_like(self.order)
-        inv_order[self.order] = np.arange(len(self.order))
+        inv_order = np.empty_like(self._cc.order_)
+        inv_order[self._cc.order_] = np.arange(len(self._cc.order_))
         return pred[:, inv_order]

@@ -9,7 +9,8 @@ from cc_rl.data.Dataset import Dataset
 
 class Analyzer:
     available_methods = ['greedy', 'exhaustive_search', 'epsilon_approximation',
-                         'beam_search', 'monte_carlo', 'efficient_monte_carlo']
+                         'beam_search', 'monte_carlo', 'efficient_monte_carlo',
+                         'qlearning', 'mcts']
     available_losses = ['exact_match', 'hamming']
     available_datasets = list(Dataset.available_datasets)
     all_params = {'greedy': [{}],
@@ -17,7 +18,9 @@ class Analyzer:
                   'epsilon_approximation': [{'epsilon': 0.25}],
                   'beam_search': [{'b': 2}, {'b': 3}, {'b': 10}],
                   'monte_carlo': [{'q': 10}, {'q': 50}, {'q': 100}],
-                  'efficient_monte_carlo': [{'q': 10}, {'q': 50}, {'q': 100}]}
+                  'efficient_monte_carlo': [{'q': 10}, {'q': 50}, {'q': 100}],
+                  'qlearning': [{'nb_sim': 30, 'nb_paths': 6, 'epochs': 10}],
+                  'mcts': [{'nb_sim': 100, 'nb_paths': 1, 'epochs': 10}]}
 
     def __init__(self, methods='all', losses='all', datasets='all', params=all_params):
         """Default constructor. It checks if all inputs are correct and transforms them
@@ -51,11 +54,12 @@ class Analyzer:
         """
 
         dfs = {}
-        for l in self.losses + ['time', 'n_nodes']:
+        for l in self.losses + [l + '_reward' for l in self.losses] + ['time', 'n_nodes']:
             dfs[l] = pd.DataFrame(index=self.datasets)
 
         for i in range(len(self.datasets)):
             ds = self.datasets[i]
+
             print('Dataset {}/{}: {} - Loading'.format(
                 i+1, len(self.datasets), ds), end='... ', flush=True)
             dataset = Dataset(ds)
@@ -64,7 +68,6 @@ class Analyzer:
             cc = ClassifierChain()
             cc.fit(dataset)
 
-            without_humming = ['greedy', 'epsilon_approximation']
             for method in self.methods:
                 for p in self.params[method]:
                     column = method + ' ' + str(p)
@@ -76,15 +79,18 @@ class Analyzer:
                         dfs['n_nodes'].loc[ds, column] = np.nan
                         dfs['exact_match'].loc[ds, column] = np.nan
                         dfs['hamming'].loc[ds, column] = np.nan
+                        dfs['exact_match_reward'].loc[ds, column] = np.nan
+                        dfs['hamming_reward'].loc[ds, column] = np.nan
                         break
 
                     # Predict and calculate metrics
-                    if len(self.losses) == 2 and method not in without_humming:
+                    if len(self.losses) == 2:
                         t = 0
                         for l in self.losses:
                             t1 = time.time()
-                            pred, n_nodes = cc.predict(
-                                dataset, method, loss=l, return_num_nodes=True, **p)
+                            pred, n_nodes, reward = cc.predict(
+                                dataset, method, loss=l, return_num_nodes=True,
+                                return_reward=True, **p)
                             t += time.time() - t1
 
                             if l == 'exact_match':
@@ -93,17 +99,19 @@ class Analyzer:
                                 loss = hamming_loss(dataset.test_y, pred)
 
                             dfs[l].loc[ds, column] = loss
+                            dfs[l + '_reward'].loc[ds, column] = reward
                         t /= 2 * len(dataset.test_x)
                     else:
+                        l = self.losses[0]
                         t = time.time()
-                        pred, n_nodes = cc.predict(
-                            dataset, method, loss=self.losses[0], return_num_nodes=True, **p)
+                        pred, n_nodes, reward = cc.predict(
+                            dataset, method, loss=l, return_num_nodes=True,
+                            return_reward=True, **p)
                         t = (time.time() - t) / len(dataset.test_x)
 
-                        dfs['exact_match'].loc[ds, column] = zero_one_loss(
+                        dfs[l].loc[ds, column] = zero_one_loss(
                             dataset.test_y, pred)
-                        dfs['hamming'].loc[ds, column] = hamming_loss(
-                            dataset.test_y, pred)
+                        dfs[l + '_reward'].loc[ds, column] = reward
 
                     dfs['time'].loc[ds, column] = t
                     dfs['n_nodes'].loc[ds, column] = n_nodes
