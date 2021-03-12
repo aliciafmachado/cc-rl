@@ -30,8 +30,21 @@ class Trainer:
         self.__optimize_parameters()
 
     def __optimize_order(self):
-        self.best_order = list(range(self.ds.test_y.shape[1]))
-        np.random.shuffle(self.best_order)
+        # FIXME: stop hardcoding this
+        orders = {'birds': [6, 1, 9, 17, 3, 0, 7, 8, 2, 5, 13, 16, 10, 4, 15, 11, 12, 18,
+                            14],
+                  'emotions': [4, 0, 5, 3, 2, 1],
+                  'flags': [2, 5, 1, 6, 4, 3, 0],
+                  'genbase': [25, 11, 24, 15, 22, 19, 1, 23, 6, 5, 10, 16, 20, 4, 14, 0,
+                              9, 8, 26, 2, 17, 12, 13, 3, 7, 21, 18],
+                  'image': [3, 4, 2, 0, 1],
+                  'scene': [1, 5, 2, 4, 3, 0],
+                  'yeast': [9, 8, 12, 11, 3, 1, 6, 4, 7, 5, 2, 10, 0, 13]}
+        if self.ds.name in orders:
+            self.best_order = orders[self.ds.name]
+        else:
+            self.best_order = list(range(self.ds.test_y.shape[1]))
+            np.random.shuffle(self.best_order)
 
     def __optimize_parameters(self):
         """Calibrates the base estimators parameters.

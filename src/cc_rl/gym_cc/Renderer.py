@@ -148,7 +148,10 @@ class Renderer:
                 coords2 = self.__cur_node.next_coords(self.__depth, next_depth, a)
                 self.__cur_node[a] = RendererNode(coords2, next_depth, probability)
 
-            self.__cur_reward *= probability
+            if self.__loss == 'exact_match':
+                self.__cur_reward += np.log(probability)
+            else:
+                self.__cur_reward += probability
             self.__cur_actions.append(a)
             self.__cur_node = self.__cur_node[a]
 

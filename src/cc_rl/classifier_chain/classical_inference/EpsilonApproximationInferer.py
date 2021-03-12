@@ -21,7 +21,7 @@ class EpsilonApproximationInferer(BaseInferer):
         """
 
         super().__init__(classifier_chain.order_)
-        self.cc = classifier_chain.cc
+        self.cc = classifier_chain
         assert(0 <= epsilon and epsilon <= 0.5)
         self.epsilon = epsilon
 

@@ -1,6 +1,7 @@
 import os
 import pickle
 from sklearn.multioutput import ClassifierChain as skClassifierChain
+import warnings
 
 from cc_rl.data.Dataset import Dataset
 from cc_rl.utils.LogisticRegressionExtended import LogisticRegressionExtended
@@ -53,7 +54,9 @@ class ClassifierChain:
                 self.cc = pickle.load(file)
                 return
 
+        warnings.filterwarnings('ignore')
         self.cc.fit(ds.train_x, ds.train_y)
+        warnings.filterwarnings('default')
 
     def predict(self, ds: Dataset, inference_method: str, return_num_nodes: bool = False,
                 **kwargs):
