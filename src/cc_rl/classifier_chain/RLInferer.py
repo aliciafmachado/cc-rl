@@ -14,7 +14,8 @@ class RLInferer(BaseInferer):
 
     def __init__(self, classifier_chain, loss: str,
                  agent_type: str, nb_sim: int, nb_paths: int, epochs: int,
-                 batch_size: int = 64, learning_rate: float = 1e-3, mcts_passes=10):
+                 batch_size: int = 64, learning_rate: float = 1e-3,
+                 mcts_passes: int = 10):
         super().__init__(classifier_chain.cc, loss)
         self.cc = classifier_chain
         assert agent_type == 'qlearning' or agent_type == 'mcts'

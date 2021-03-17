@@ -130,10 +130,12 @@ class ClassifierChain:
             elif inference_method == 'qlearning' or inference_method == 'mcts':
                 batch_size = kwargs['batch_size'] if 'batch_size' in kwargs else None
                 learning_rate = kwargs['learning_rate'] if 'learning_rate' in kwargs else None
+                mcts_passes = kwargs['mcts_passes'] if 'mcts_passes' in kwargs else None
                 inferer = RLInferer(self, loss,
                                     agent_type=inference_method, nb_sim=kwargs['nb_sim'],
                                     nb_paths=kwargs['nb_paths'], epochs=kwargs['epochs'],
-                                    batch_size=batch_size, learning_rate=learning_rate)
+                                    batch_size=batch_size, learning_rate=learning_rate,
+                                    mcts_passes=mcts_passes)
             else:
                 raise Exception('This inference method does not exist.')
 
