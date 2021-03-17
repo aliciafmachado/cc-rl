@@ -37,6 +37,9 @@ class Analyzer:
                 as lists of dicts of keyword arguments that method receives. Defaults to
                 all_params.
         """
+        pd.set_option('display.max_columns', 100)
+        pd.set_option('display.max_rows', 100)
+
         self.methods = self.__parse(methods, Analyzer.available_methods)
         self.losses = self.__parse(losses, Analyzer.available_losses)
         self.datasets = self.__parse(datasets, Analyzer.available_datasets)
