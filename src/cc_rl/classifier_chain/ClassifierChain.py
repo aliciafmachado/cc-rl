@@ -91,11 +91,12 @@ class ClassifierChain:
                     reward = np.ones((len(ds.test_x),), dtype=float)
                 else:
                     reward = np.zeros((len(ds.test_x),), dtype=float)
+                pred_ordered = pred[:, self.cc.order_]
                 for i in range(len(self.cc.estimators_)):
-                    x_aug = np.hstack((ds.test_x, pred[:, :i]))
+                    x_aug = np.hstack((ds.test_x, pred_ordered[:, :i]))
                     proba = self.cc.estimators_[i].predict_proba(x_aug)
                     new_proba = np.take_along_axis(
-                        proba, pred[:, i].astype(int).reshape(-1, 1), axis=1).flatten()
+                        proba, pred_ordered[:, i].astype(int).reshape(-1, 1), axis=1).flatten()
                     if loss == 'exact_match':
                         reward *= new_proba
                     else:
