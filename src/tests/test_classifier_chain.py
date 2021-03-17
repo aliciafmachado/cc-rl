@@ -15,7 +15,16 @@ y_pred, reward = cc.predict(ds, 'greedy', loss='exact_match', return_reward=True
 print('Greedy exact_match:', zero_one_loss(ds.test_y, y_pred))
 print('Greedy reward:', reward)
 
-y_pred, reward = cc.predict(ds, 'qlearning', loss='exact_match', nb_sim=20, nb_paths=5,
-                            epochs=5, return_reward=True)
+y_pred, reward = cc.predict(ds, 'exhaustive_search', loss='exact_match', return_reward=True)
+print('exhaustive_search exact_match:', zero_one_loss(ds.test_y, y_pred))
+print('exhaustive_search reward:', reward)
+
+y_pred, reward = cc.predict(ds, 'qlearning', loss='exact_match', nb_sim=100, nb_paths=3,
+                            epochs=10, return_reward=True)
+print('RL exact_match:', zero_one_loss(ds.test_y, y_pred))
+print('RL reward:', reward)
+
+y_pred, reward = cc.predict(ds, 'mcts', loss='exact_match', nb_sim=60, nb_paths=1,
+                            epochs=10, mcts_passes=3, return_reward=True)
 print('RL exact_match:', zero_one_loss(ds.test_y, y_pred))
 print('RL reward:', reward)

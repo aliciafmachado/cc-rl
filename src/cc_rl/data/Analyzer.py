@@ -19,8 +19,8 @@ class Analyzer:
                   'beam_search': [{'b': 2}, {'b': 3}, {'b': 10}],
                   'monte_carlo': [{'q': 10}, {'q': 50}, {'q': 100}],
                   'efficient_monte_carlo': [{'q': 10}, {'q': 50}, {'q': 100}],
-                  'qlearning': [{'nb_sim': 30, 'nb_paths': 6, 'epochs': 10}],
-                  'mcts': [{'nb_sim': 100, 'nb_paths': 1, 'epochs': 10}]}
+                  'qlearning': [{'nb_sim': 100, 'nb_paths': 3, 'epochs': 10}],
+                  'mcts': [{'nb_sim': 60, 'nb_paths': 1, 'epochs': 10, 'mcts_passes': 3}]}
 
     def __init__(self, methods='all', losses='all', datasets='all', params=all_params):
         """Default constructor. It checks if all inputs are correct and transforms them

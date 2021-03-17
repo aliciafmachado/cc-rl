@@ -14,7 +14,7 @@ class RLInferer(BaseInferer):
 
     def __init__(self, classifier_chain, loss: str,
                  agent_type: str, nb_sim: int, nb_paths: int, epochs: int,
-                 batch_size: int = None, learning_rate: int = None):
+                 batch_size: int = 64, learning_rate: float = 1e-3, mcts_passes=10):
         super().__init__(classifier_chain.cc, loss)
         self.cc = classifier_chain
         assert agent_type == 'qlearning' or agent_type == 'mcts'
@@ -24,6 +24,7 @@ class RLInferer(BaseInferer):
         self.__epochs = epochs
         self.__batch_size = batch_size if batch_size is not None else 64
         self.__learning_rate = learning_rate if learning_rate is not None else 1e-3
+        self.__mcts_passes = mcts_passes if mcts_passes is not None else 10
 
     def _infer(self, x: NDArray[float]):
         y_pred = []
@@ -31,11 +32,10 @@ class RLInferer(BaseInferer):
         env = Env(self.cc, x)
 
         for i in range(len(x)):
-            # print('{} / {}'.format(i, len(x)))
             if self.__agent_type == 'qlearning':
                 agent = QAgent(env)
             elif self.__agent_type == 'mcts':
-                agent = MCTSAgent(env)
+                agent = MCTSAgent(env, mcts_passes=self.__mcts_passes)
             else:
                 raise ValueError
 
