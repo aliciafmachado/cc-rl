@@ -133,5 +133,6 @@ class Env(gym.Env):
   def next_sample(self):
     self.cur_sample += 1
     self.cur_x = self.x[self.cur_sample]
+    self.observation_dict = {}
     self.reset()
     self.renderer.next_sample()
